@@ -1,2 +1,2 @@
-config.ini
-configs/isp/default.ini
+.configs/isp/default.ini
+.configs/config.ini

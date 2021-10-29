@@ -20,7 +20,6 @@ isp: "",
 }...]
 --- returns
 * HTTP status code
-
 # Get ISP for numbers based on their ISP
 get - /isp
 ?number= # E.164 standard (country code required) https://en.wikipedia.org/wiki/E.164
@@ -84,8 +83,8 @@ def rabbit_new_sms_request(auth_id, auth_key, data):
 
     # queue_name = config_queue_name + _ + isp
     for _data in data:
-        queue_name = auth_id + '_' + config['RABBITMQ']['outgoing_queue_name'] + '_' + _data['isp']
-        routing_key = auth_id + '_' + config['RABBITMQ']['outgoing_queue_name'] + '.' + _data['isp']
+        queue_name = auth_id + '_' + config['RABBITMQ']['outgoing_queue_name'] + '_' + _data['isp'].lower()
+        routing_key = auth_id + '_' + config['RABBITMQ']['outgoing_queue_name'] + '.' + _data['isp'].lower()
         
         ''' creates the queue, due to not knowing the isp this compute is wasted'''
         # channel.queue_declare(queue_name, durable=True)
@@ -194,9 +193,9 @@ def get_isp():
         _config.read(os.path.join(os.path.dirname(__file__), '../configs/isp', 'default.ini'))
         """
         # _config=CustomConfigParser(os.path.join(os.path.dirname(__file__), '..', ''))
-        _config = CustomConfigParser()
+        # _config = CustomConfigParser()
         # _config.read(os.path.join(os.path.dirname(__file__), '../configs/isp', 'default.ini'))
-        _config.read("../.configs/isp/default.ini")
+        # _config.read("../.configs/isp/default.ini")
 
         country=None
         country_code=None
@@ -253,15 +252,20 @@ def get_isp():
 
 
 if __name__ == "__main__":
-    global config
+    global config, _config
 
     """
     config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
     config.read(os.path.join(os.path.dirname(__file__), '', 'config.ini'))
     """
-    config = CustomConfigParser()
-    config.read('config.ini')
+    configreader = CustomConfigParser()
+    config=configreader.read('.configs/config.ini')
+    _config=configreader.read(".configs/isp/default.ini")
+    # print(config)
+
+    host = config['API']['host']
+    port = config['API']['port']
 
     # app.run(host='localhost', port='15673', debug=True, threaded=True )
-    app.run(host='localhost', port='15673', debug=True, threaded=True )
+    app.run(host=host, port=port, debug=True, threaded=True )
     # app.run(host='localhost', port='15673', debug=False)

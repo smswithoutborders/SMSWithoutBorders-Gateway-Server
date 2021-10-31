@@ -7,12 +7,11 @@ import traceback
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from CustomConfigParser.customconfigparser import CustomConfigParser
+from commons.CustomConfigParser.customconfigparser import CustomConfigParser
 from cluster import Cluster
 
 app = Flask(__name__)
 CORS(app)
-
 
 configreader = CustomConfigParser(os.getcwd())
 config=configreader.read('.configs/config.ini')

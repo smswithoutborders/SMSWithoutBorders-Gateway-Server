@@ -8,6 +8,12 @@ python3 -m virtualenv venv
 pip3 install -r requirements.txt
 ```
 
+### Configuration
+- Copy the config files and edit the
+```
+cp .configs/example.config.ini .configs/config.ini
+```
+
 
 ### Usage
 ```bash

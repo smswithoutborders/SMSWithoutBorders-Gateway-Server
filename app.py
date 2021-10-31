@@ -21,7 +21,7 @@ rmq_outgoing_exchange_name=config['rabbit_mq']['exchange_name']
 rmq_outgoing_exchange_type=config['rabbit_mq']['exchange_type']
 rmq_outgoing_queue_name=config['rabbit_mq']['queue_name']
 
-def send_sms(auth_id, data, country):
+def send_sms(auth_id, data, country=None):
     print('* Requesting sms for...')
     for request in data:
         # TODO use country to determine isp
@@ -83,7 +83,8 @@ def sms(country:str):
     try:
         auth_id=data['auth_id']
         data1=data['data']
-        if send_sms(auth_id=auth_id, data=data1, country=country):
+        # if send_sms(auth_id=auth_id, data=data1, country=country):
+        if send_sms(auth_id=auth_id, data=data1):
             return '', 200
     except Exception as error:
         return jsonify(error), 500

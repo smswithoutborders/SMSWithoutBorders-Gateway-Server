@@ -27,18 +27,20 @@ def send_sms(auth_id, data):
     for request in data:
         print(f"\t+ number: {request['number']}, isp: {request['isp']}")
         try:
-            Cluster.request_sms(
+            if Cluster.request_sms(
                     auth_id,
                     request, 
                     rmq_server_url, 
                     rmq_outgoing_exchange_name, 
                     rmq_outgoing_exchange_type, 
-                    rmq_outgoing_queue_name)
+                    rmq_outgoing_queue_name):
+
+                return True
         except Exception as error:
             print(traceback.format_exc())
             raise(error)
 
-    return True
+    return False
 
 
 @app.route('/sms/<string:country>', methods=['POST'])

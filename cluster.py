@@ -34,14 +34,19 @@ class Cluster:
         number = data['number']
         data = json.dumps({"text":text, "number":number})
 
-        channel.basic_publish(
-            exchange=rmq_outgoing_exchange_name,
-            routing_key=routing_key,
-            body=data,
-            properties=pika.BasicProperties(
-                delivery_mode=2,  # make message persistent
-            ))
-        # print(" [x] Sent %r" % message)
-        print(f"[x] text; {text} ::\n\tsent to {number}")
-        # connection.close()
+        try:
+            channel.basic_publish(
+                exchange=rmq_outgoing_exchange_name,
+                routing_key=routing_key,
+                body=data,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # make message persistent
+                ))
+            # print(" [x] Sent %r" % message)
+            print(f"\n\tsent to {number}")
+            # connection.close()
+        except Exception as error:
+            raise(error)
+
+        return True
 

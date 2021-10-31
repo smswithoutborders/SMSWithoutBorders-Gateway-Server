@@ -21,4 +21,9 @@ if __name__ == "__main__":
             {"isp":sys.argv[2], "number":sys.argv[3], "text":"Test message from Deku API"}
     ]
     response = requests.post(url=url, json={"auth_id":auth_id, "data":data})
-    print(response.text)
+    # print(response.text)
+
+    if response.status_code == 200:
+        print("* sms request successful")
+    else:
+        print("* sms request failed", response.status_code, response.text)

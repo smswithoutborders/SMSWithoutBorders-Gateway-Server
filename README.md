@@ -24,7 +24,7 @@ python3 app.py
 #### API endpoints
 ##### New SMS request
 <b>+ POST<br>
-/sms/</b>
+/sms</b>
 ```json
 {
 	"auth_id":<string>,

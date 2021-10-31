@@ -50,7 +50,7 @@ def sms_country(country:str):
 
 
 @app.route('/sms', methods=['POST'])
-def sms(country:str):
+def sms():
     print('* sending sms...')
     ''' the request is in the data '''
 

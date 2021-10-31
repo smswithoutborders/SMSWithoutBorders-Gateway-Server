@@ -12,9 +12,12 @@ if __name__ == "__main__":
     config.read(os.path.join(os.path.dirname(__file__), '../.configs', 'config.ini'))
     """
 
+    """
     print("usage: / [auth_id] [isp] [number] [country]")
     country=sys.argv[4]
-    url=f'http://localhost:15673/sms/{country}'
+    """
+    print("usage: / [auth_id] [isp] [number]")
+    url=f'http://localhost:15673/sms'
 
     auth_id=sys.argv[1]
     data=[

@@ -44,6 +44,12 @@ def send_sms(auth_id, data, country):
 
 
 @app.route('/sms/<string:country>', methods=['POST'])
+def sms_country(country:str):
+    # TODO do some country related things here
+    sms(country)
+
+
+@app.route('/sms', methods=['POST'])
 def sms(country:str):
     print('* sending sms...')
     ''' the request is in the data '''

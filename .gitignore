@@ -1,3 +1,4 @@
 config.ini
 default.js
 venv/*
+__pycache__/*

@@ -83,11 +83,12 @@ def sms(country:str):
 
 
 if __name__ == "__main__":
-    """
     host = config['API']['host']
     port = config['API']['port']
+
     """
     host='localhost'
     port='15673'
+    """
 
     app.run(host=host, port=port, debug=True, threaded=True )

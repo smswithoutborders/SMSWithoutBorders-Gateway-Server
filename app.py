@@ -15,7 +15,6 @@ CORS(app)
 
 configreader = CustomConfigParser(os.getcwd())
 config=configreader.read('.configs/config.ini')
-
 rmq_server_url=config['rabbit_mq']['server_url']
 rmq_outgoing_exchange_name=config['rabbit_mq']['exchange_name']
 rmq_outgoing_exchange_type=config['rabbit_mq']['exchange_type']

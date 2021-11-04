@@ -1,3 +1,12 @@
+# SMSWithoutBorders Gateway Admin
+### Features
+- REST API for making request to client nodes
+
+### Requirements
+- python3
+- RabbitMQ 
+
+
 ### Installation
 ```bash
 https://github.com/smswithoutborders/SMSWithoutBorders-Gateway-Server.git

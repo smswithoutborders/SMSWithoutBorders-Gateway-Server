@@ -1,2 +1,0 @@
-.configs/isp/default.ini
-.configs/config.ini

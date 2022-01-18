@@ -1,3 +1,0 @@
-[submodule "CustomConfigParser"]
-	path = commons/CustomConfigParser
-	url = https://github.com/sherlockwisdom/CustomConfigParser.git

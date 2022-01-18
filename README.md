@@ -1,10 +1,15 @@
-# SMSWithoutBorders Gateway Admin
-### Features
-- REST API for making request to client nodes
-
+# SMSWithoutBorders Gateway Server
 ### Requirements
 - python3
-- RabbitMQ 
+- RabbitMQ
+
+
+### Features
+- Message broker server for [Gateway-Client]() (_see [SMSWithoutBorders-OpenAPI]()_ )
+- [SMSWithoutBorders-App]() synchronization for communication with [Publisher]()
+	> This should should be hosted in the same place as [Publisher](), because Publisher is not _directly_ exposed to the web.
+- Forwards publishing request from [Gateway-Client]() to [Publisher]()
+- Authenticates [Gateway-Client's]() request to join [Publisher]()
 
 
 ### Installation
@@ -21,26 +26,4 @@ pip3 install -r requirements.txt
 - Copy the config files and edit the
 ```
 cp .configs/example.config.ini .configs/config.ini
-```
-
-
-### Usage
-```bash
-. venv/bin/activate
-python3 app.py
-```
-
-#### API endpoints
-##### New SMS request
-<b>+ POST<br>
-/sms</b>
-```json
-{
-	"auth_id":<string>,
-	"data":[{
-		"isp":<string> //lowcase
-		"number":<string> //E.164 standard required]
-		"text":<sring>},
-	...]
-}
 ```

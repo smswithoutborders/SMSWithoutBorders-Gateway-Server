@@ -48,14 +48,14 @@ class Clients:
         try:
             cur = self.con.cursor()
             cur.execute('''CREATE TABLE clients
-            (id INT PRIMARY KEY NOT NULL,
+            (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             number TEXT NOT NULL,
             country TEXT NOT NULL,
+            sim_imei TEXT NOT NULL UNIQUE,
             routes_online BOOLEAN NOT NULL,
             routes_offline BOOLEAN NOT NULL,
-            instantiated_datetime DATETIME NOT NULL,
-            shared_key TEXT NOT NULL,
-            public_key TEXT NOT NULL);''')
+            instantiated_datetime DATETIME DEFAULT CURRENT_TIMESTAMP
+            NOT NULL);''')
             
             self.con.commit()
 
@@ -90,21 +90,23 @@ class Clients:
 
                 ''' database structure --- 
 
+                + id:""
                 + number:""
                 + country:""
+                + sim_imei:""
                 + routes_online:""
                 + routes_offline:""
                 + instantiated_datetime:""
-                + shared_key:""
-                + public_key:""
                 '''
 
                 client = {}
-                client['number'] = row[0]
-                client['country'] = row[1]
-                client['routes_online'] = row[2]
-                client['routes_offline'] = row[3]
-                client['instantiated_datetime'] = row[4]
+                client['id'] = row[0]
+                client['number'] = row[1]
+                client['country'] = row[2]
+                client['sim_imei'] = row[3]
+                client['routes_online'] = row[4]
+                client['routes_offline'] = row[5]
+                client['instantiated_datetime'] = row[6]
 
                 clients.append(client)
 
@@ -131,6 +133,29 @@ class Clients:
             raise error
 
         return clients
+
+    def create(self, data:dict) -> None:
+        cur = self.con.cursor()
+        data_values = (
+                data['number'],
+                data['country'],
+                data['sim_imei'],
+                data['routes_online'],
+                data['routes_offline'])
+
+        try:
+            cur.execute(
+                    'INSERT INTO clients(number, country, sim_imei, routes_online, routes_offline) VALUES(?,?,?,?,?)',
+                    data_values)
+
+            self.con.commit()
+
+        except sqlite3.Warning as error:
+            logging.warning(error)
+
+        except Exception as error:
+            raise error
+
     
     def __del__(self):
         self.con.close()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sqlite3
 import logging
 import traceback
@@ -7,6 +8,8 @@ import traceback
 class Clients:
     def __init__(self) -> None:
         self.con = None
+        self.db_client_filepath = os.path.join(
+                os.path.dirname(__file__), '.db', 'clients.db')
 
         try:
             db_exist = self.__is_database__()
@@ -37,7 +40,7 @@ class Clients:
 
     def __create_db__(self):
         try:
-            self.con = sqlite3.connect('.db/clients.db')
+            self.con = sqlite3.connect(self.db_client_filepath)
         except Exception as error:
             raise error
     
@@ -65,7 +68,8 @@ class Clients:
 
     def __is_database__(self):
         try:
-            self.con = sqlite3.connect("file:.db/clients.db?mode=rw",
+            self.con = sqlite3.connect(
+                    f"file:{self.db_client_filepath}?mode=rw",
                     uri=True)
 
         except sqlite3.OperationalError as error:
@@ -113,12 +117,14 @@ class Clients:
         return clients
 
     def get_list(self):
+
         ''' data format per object
         number: ""
         country: ""
         routes_online: bool
         routes_offline: bool
         '''
+
         try:
             clients = self.__read_clients_db__()
         except Exception as error:

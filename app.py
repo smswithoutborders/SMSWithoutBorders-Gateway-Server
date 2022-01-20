@@ -3,7 +3,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
-from clients import Clients
+
+from gateway_server.clients import Clients
 
 app = Flask(__name__)
 CORS(app)

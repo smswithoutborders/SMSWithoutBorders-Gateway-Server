@@ -26,7 +26,9 @@ def get_clients():
 @app.route('/clients', methods=['POST'])
 def init_handshake_clients():
     logging.debug('beginning clients handshake')
+
     '''
+    TODO
     - some handshake happens here
     '''
 
@@ -65,20 +67,36 @@ def init_handshake_clients():
     if not 'routes_offline' in data:
         return 'missing routes offline', 400
 
-
     try:
-        client = Clients()
-        client.create(data)
-
-        return '', 200
-
+        client = Clients(number=data['number'], 
+                sim_imei=data['sim_imei'])
     except Exception as error:
+        # raise error
         logging.exception(error)
+    else:
+        try:
+            logging.debug("cheking if client exist...")
+            if client.exist():
+                # return jsonify({"route_path":route_path}), 200
+                return jsonify({"route_path":""}), 200
+
+        except Exception as error:
+            logging.exception(error)
+
+        try:
+            logging.debug("creating client...")
+            client.create(data)
+            return jsonify({"route_path":route_path}), 200
+
+        except Exception as error:
+            logging.exception(error)
 
     return '', 500
 
 
 if __name__ == "__main__":
+    global route_path
+    # route_path = Router.get_route_path()
 
     logging.basicConfig(level='DEBUG')
 

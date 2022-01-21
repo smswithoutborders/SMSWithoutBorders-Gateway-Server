@@ -6,8 +6,11 @@ import logging
 import traceback
 
 class Clients:
-    def __init__(self) -> None:
+    def __init__(self, number:str=None, sim_imei:str=None) -> None:
         self.con = None
+        self.number = number
+        self.sim_imei = sim_imei
+
         self.db_client_filepath = os.path.join(
                 os.path.dirname(__file__), '.db', 'clients.db')
 
@@ -143,10 +146,8 @@ class Clients:
                 data['routes_online'],
                 data['routes_offline'])
 
-        try:
-            cur.execute(
-                    'INSERT INTO clients(number, country, sim_imei, routes_online, routes_offline) VALUES(?,?,?,?,?)',
-                    data_values)
+        try: 
+            cur.execute("INSERT INTO clients( number, country, sim_imei, routes_online, routes_offline) VALUES(?,?,?,?,?)", data_values)
 
             self.con.commit()
 
@@ -156,7 +157,22 @@ class Clients:
         except Exception as error:
             raise error
 
-    
+    def exist(self) -> bool:
+        cur = self.con.cursor()
+        
+        try:
+            rows = cur.execute(
+                "SELECT 1 FROM clients WHERE sim_imei=:sim_imei", 
+                {"sim_imei":self.sim_imei}).fetchall()
+
+            return True if rows[0][0] == 1 else False
+
+        except sqlite3.Warning as error:
+            logging.exception(error)
+
+        except Exception as error:
+            raise error
+
     def __del__(self):
         self.con.close()
 

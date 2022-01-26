@@ -5,14 +5,14 @@ import sqlite3
 import logging
 import traceback
 
-class Clients:
-    def __init__(self, number:str=None, sim_imei:str=None) -> None:
+class Ledger:
+    def __init__(self, MSISDN:str=None, IMSI:str=None) -> None:
         self.con = None
-        self.number = number
-        self.sim_imei = sim_imei
+        self.MSISDN = MSISDN
+        self.IMSI = IMSI
 
         self.db_client_filepath = os.path.join(
-                os.path.dirname(__file__), '.db', 'clients.db')
+                os.path.dirname(__file__), '.db', 'ledger.db')
 
         try:
             db_exist = self.__is_database__()
@@ -52,13 +52,10 @@ class Clients:
             cur = self.con.cursor()
             cur.execute('''CREATE TABLE clients
             (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            number TEXT NOT NULL,
-            country TEXT NOT NULL,
-            sim_imei TEXT NOT NULL UNIQUE,
-            routes_online BOOLEAN NOT NULL,
-            routes_offline BOOLEAN NOT NULL,
-            instantiated_datetime DATETIME DEFAULT CURRENT_TIMESTAMP
-            NOT NULL);''')
+            MSISDN TEXT NOT NULL UNIQUE,
+            IMSI TEXT NOT NULL UNIQUE,
+            update_platform TEXT NOT NULL,
+            update_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL);''')
             
             self.con.commit()
 
@@ -94,22 +91,18 @@ class Clients:
                 ''' database structure --- 
 
                 + id:""
-                + number:""
-                + country:""
-                + sim_imei:""
-                + routes_online:""
-                + routes_offline:""
-                + instantiated_datetime:""
+                + MSISDN:""
+                + IMSI:""
+                + update_platform:""
+                + update_timestamp:""
                 '''
 
                 client = {}
                 client['id'] = row[0]
-                client['number'] = row[1]
-                client['country'] = row[2]
-                client['sim_imei'] = row[3]
-                client['routes_online'] = row[4]
-                client['routes_offline'] = row[5]
-                client['instantiated_datetime'] = row[6]
+                client['MSISDN'] = row[1]
+                client['IMSI'] = row[2]
+                client['update_platform'] = row[3]
+                client['update_timestamp'] = row[4]
 
                 clients.append(client)
 
@@ -122,14 +115,6 @@ class Clients:
         return clients
 
     def get_list(self):
-
-        ''' data format per object
-        number: ""
-        country: ""
-        routes_online: bool
-        routes_offline: bool
-        '''
-
         try:
             clients = self.__read_clients_db__()
         except Exception as error:
@@ -140,14 +125,12 @@ class Clients:
     def create(self, data:dict) -> None:
         cur = self.con.cursor()
         data_values = (
-                data['number'],
-                data['country'],
-                data['sim_imei'],
-                data['routes_online'],
-                data['routes_offline'])
+                data['MSISDN'],
+                data['IMSI'],
+                data['update_platform'])
 
         try: 
-            cur.execute("INSERT INTO clients( number, country, sim_imei, routes_online, routes_offline) VALUES(?,?,?,?,?)", data_values)
+            cur.execute("INSERT INTO clients( MSISDN, IMSI, update_platform) VALUES(?,?,?)", data_values)
 
             self.con.commit()
 
@@ -157,13 +140,13 @@ class Clients:
         except Exception as error:
             raise error
 
-    def exist(self) -> bool:
+    def exist(self, data:dict) -> bool:
         cur = self.con.cursor()
         
         try:
             rows = cur.execute(
-                "SELECT 1 FROM clients WHERE sim_imei=:sim_imei", 
-                {"sim_imei":self.sim_imei}).fetchall()
+                    "SELECT 1 FROM clients WHERE IMSI=:IMSI and MSISDN=:MSISDN",
+                    {"IMSI":data['IMSI'], "MSISDN":data['MSISDN']}).fetchall()
 
             return True if rows[0][0] == 1 else False
 

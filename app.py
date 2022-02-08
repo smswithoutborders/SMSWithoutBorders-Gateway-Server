@@ -20,8 +20,7 @@ def get_client_imsi(IMSI):
 def get_clients():
     logging.debug('fetching clients')
     try:
-        clients = Clients()
-        list_clients = clients.get_list()
+        list_clients = Ledger().get_list()
 
         return jsonify(list_clients), 200
     except Exception as error:
@@ -56,21 +55,48 @@ def get_clients(IMSI):
     return '', 500
 """
 
+def publish_record(Body:str, From:str)->bool:
+    try:
+        data = json.loads(b64decode(Body))
+        logging.debug("%s", data)
+
+    except Exception as error:
+        raise error
+    else:
+        if not 'IMSI' in data:
+            logging.error('no IMSI in data - %s', data)
+            return False
+    
+        try:
+            ledger = Ledger()
+
+            data = { "MSISDN":From, "IMSI":data['IMSI'], "update_platform":platform}
+            if not ledger.exist(data):
+                ledger.create(data=data)
+                logging.info("New record inserted")
+            else:
+                logging.info("Record exist")
+        except Exception as error:
+            raise error
+        else:
+            # TODO: https://www.twilio.com/docs/sms/tutorials/how-to-receive-and-reply-python
+            # return jsonify({"MSISDN":From}), 200
+            return True
+
 
 @app.route('/sms/platform/<platform>/incoming/protocol/verification', methods=['POST'])
 def sms_incoming(platform):
     """Receive inbound messages from Webhooks.
+    Given that this URL is unique, only seeders can have the required key to route to them
         TODO:
             - Add platform security with secret keys at url levels
     """
 
-    logging.debug('incoming sms for platform %s', platform)
-
     if not platform:
         return 'no platform provided', 500
+    logging.debug('incoming sms for platform %s', platform)
 
     if platform == 'twilio':
-        logging.debug('incoming for %s', platform)
 
         From=request.values.get('From', None)
         To=request.values.get('To', None)
@@ -82,50 +108,24 @@ def sms_incoming(platform):
                 From, To, FromCountry,Body)
 
         try:
-            data = json.loads(b64decode(Body))
-            logging.debug("%s", data)
-
-        except Exception as error:
-            logging.exception(error)
-            return '', 500
-        else:
-            if not 'IMSI' in data:
-                logging.error('no IMSI in data - %s', data)
-                return '', 400
-        
-            try:
-                ledger = Ledger()
-
-                data = { "MSISDN":From, "IMSI":data['IMSI'], "update_platform":platform}
-                if not ledger.exist(data):
-                    ledger.create(data=data)
-                    logging.info("New record inserted")
-                else:
-                    logging.info("Record exist")
-            except Exception as error:
-                logging.exception(error)
-                return '', 500
+            if publish_record(Body=Body, From=From):
+                return '', 200
             else:
-                # TODO: https://www.twilio.com/docs/sms/tutorials/how-to-receive-and-reply-python
-                return jsonify({"MSISDN":From}), 200
-
-        """
-        data = None
-        ''' transform from base64 and get your string '''
-        ''' should do some action with the SMS that just came in '''
-        try:
-            IMSI = Body.split('IMSI: ')[1]
-            # TODO register and get the hell outta here
-            data = acquire_ledger_data(IMSI=IMSI, number=From)
+                return '', 400
         except Exception as error:
             return '', 500
 
+    if platform == 'gateway-client':
         try:
-            create_clients(data)
+            From = request.values.get('From', None)
+            Body = request.values.get('Body', None)
+            if publish_record(Body=Body, From=From):
+                return '', 200
+            else:
+                return '', 400
         except Exception as error:
             return '', 500
-            
-        """
+
     else:
         return 'unknown platform requested', 400
 

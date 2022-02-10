@@ -50,7 +50,7 @@ class Ledger:
     def __create_db_tables__(self):
         try:
             cur = self.con.cursor()
-            cur.execute('''CREATE TABLE clients
+            cur.execute('''CREATE TABLE IF NOT EXIST clients
             (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             MSISDN TEXT NOT NULL UNIQUE,
             IMSI TEXT NOT NULL UNIQUE,

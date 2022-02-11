@@ -36,10 +36,19 @@ The user begins authentictating themselves and adding their security policies to
 <a name="testing" />
 
 #### Testing
-Testing [Users model](gateway_server/users/Users.py)
+- Testing [Users model](gateway_server/users.py)
 ```bash
 python -m unittest gateway_server/test/UTestUsers.py
 ```
+
+- Testing [WebSockets](gateway_server/sessions_websocket.py)
+
+[https://github.com/vi/websocat](https://github.com/vi/websocat)
+
+```bash
+./websocat_linux64 ws://localhost:6996/v2/sync/init/111/000
+```
+
 
 ### Installation
 ```bash

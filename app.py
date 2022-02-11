@@ -3,18 +3,23 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from base64 import b64decode, b64encode
+import os
+import configparser
 import logging
 import json
 
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
 
+
+__api_version_number = 2
+
+__gateway_server_confs = configparser.ConfigParser()
+__gateway_server_confs.read(os.path.join(
+    os.path.dirname(__file__), 'gateway_server/confs', 'conf.ini'))
+
 app = Flask(__name__)
 CORS(app)
-
-# TODO get API version from ENV
-global __api_version_number
-__api_version_number = 2
 
 
 @app.route('/clients/status/<IMSI>', methods=['GET'])
@@ -118,10 +123,10 @@ def sessions_start(user_id):
 
     else:
         try:
-            gateway_server_websocket_url = ""
+            gateway_server_websocket_url = __gateway_server_confs['websocket']['url']
             session_id = user_session.start_new_session()
 
-            return "%s/%s" % (gateway_server_websocket_url, session_id), 200
+            return "%s/v%s/%s/%s" % (gateway_server_websocket_url, __api_version_number, user_id, session_id), 200
 
         except Exception as error:
             logging.exception(error)

@@ -12,6 +12,7 @@
 - Authenticates [Gateway-Client's]() request to join [Publisher]()
 
 <a name="synchronization" />
+
 #### Synchronization
 Synchronization is required to enable the users acquire security keys, platforms and available gateways.
 
@@ -33,6 +34,7 @@ This returns a string url, which can be connected to by websocket clients.
 The user begins authentictating themselves and adding their security policies to their record on the server.
 
 <a name="testing" />
+
 #### Testing
 Testing [Users model](gateway_server/users/Users.py)
 ```bash

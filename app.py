@@ -124,9 +124,12 @@ def sessions_start(user_id):
     else:
         try:
             gateway_server_websocket_url = __gateway_server_confs['websocket']['url']
+            gateway_server_websocket_port = __gateway_server_confs['websocket']['port']
             session_id = user_session.start_new_session()
 
-            return "%s/v%s/%s/%s" % (gateway_server_websocket_url, __api_version_number, user_id, session_id), 200
+            # http://localhost/v2/sync/init/1s1s/sss
+            return "%s:%s/v%s/sync/init/%s/%s" % (gateway_server_websocket_url,
+                    gateway_server_websocket_port, __api_version_number, user_id, session_id), 200
 
         except Exception as error:
             logging.exception(error)
@@ -150,6 +153,24 @@ def sessions_public_key_exchange(user_id, session_id):
     - Store public_key key against session
     - return own public key and user_id
     """
+
+    return '', 500
+
+
+@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/update/<new_session_id>' % (__api_version_number), methods=['PUT'])
+def sessions_user_update(user_id, session_id, new_session_id):
+    """Updates the current session for user.
+    Uses users ID and session ID to update current user's session on the users record DB.
+
+    Args:
+            user_id (str): User ID provided when the user logs in
+            session_id (str): Unique ID as has been provided by the websocket connections
+
+    Returns: str, int
+
+    TODO:
+    """
+    logging.debug("updating user session from - %s to - %s", session_id, new_session_id)
 
     return '', 500
 

@@ -26,7 +26,7 @@ class client_websocket:
 
 __persistent_connections = {}
 
-def update_session(session_id: str) -> str:
+def update_session(session_id: str, gateway_server_url: str, gateway_server_port: int, user_id: str) -> str:
     """Updates sessions for client.
     Makes the request for new session and update it on the user's database.
 
@@ -106,7 +106,9 @@ async def serve_sessions(websocket, path):
 
                 if __persistent_connections[session_id].state != '__PAUSE__':
                     try:
-                        session_id = update_session(session_id=session_id)
+                        session_id = update_session(session_id=session_id, 
+                                gateway_server_url=gateway_server_url, gateway_server_port=gateway_server_port, 
+                                user_id=user_id)
                     except Exception as error:
                         logging.exception(error)
                     else:
@@ -124,7 +126,9 @@ async def serve_sessions(websocket, path):
             logging.debug("removed client %s", session_id)
 
             try:
-                session_id = update_session(session_id=session_id)
+                session_id = update_session(session_id=session_id, 
+                        gateway_server_url=gateway_server_url, gateway_server_port=gateway_server_port, 
+                        user_id=user_id)
             
             except Exception as error:
                 logging.exception(error)

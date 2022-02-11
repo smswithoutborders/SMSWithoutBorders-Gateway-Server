@@ -11,6 +11,23 @@
 - Forwards publishing request from [Gateway-Client]() to [Publisher]()
 - Authenticates [Gateway-Client's]() request to join [Publisher]()
 
+### Installation
+```bash
+https://github.com/smswithoutborders/SMSWithoutBorders-Gateway-Server.git
+git submodule update --force --recursive --init --remote
+cd SMSWithoutBorders-Gateway-Server 
+python3 -m virtualenv venv
+. venv/bin/activate
+pip3 install -r requirements.txt
+```
+
+### Configuration
+- Copy the config files and edit the
+```
+cp .configs/example.config.ini .configs/config.ini
+```
+
+#### How to-s
 <a name="synchronization" />
 
 #### Synchronization
@@ -26,9 +43,9 @@ The total number of changes per frequency can be changed in `[sync] session_chan
 
 This returns a string url, which can be connected to by websocket clients.
 
-<url>, `200` session created
+`''`, `200` session created
 
-'', `500` some error occured, check debug logs
+`''`, `500` some error occured, check debug logs
 
 2. Once a sync url is connected, the websocket sends an acknowlegment `ACK - 200` and the socket connection is closed.
 The user begins authentictating themselves and adding their security policies to their record on the server.
@@ -47,21 +64,4 @@ python -m unittest gateway_server/test/UTestUsers.py
 
 ```bash
 ./websocat_linux64 ws://localhost:6996/v2/sync/init/111/000
-```
-
-
-### Installation
-```bash
-https://github.com/smswithoutborders/SMSWithoutBorders-Gateway-Server.git
-git submodule update --force --recursive --init --remote
-cd SMSWithoutBorders-Gateway-Server 
-python3 -m virtualenv venv
-. venv/bin/activate
-pip3 install -r requirements.txt
-```
-
-### Configuration
-- Copy the config files and edit the
-```
-cp .configs/example.config.ini .configs/config.ini
 ```

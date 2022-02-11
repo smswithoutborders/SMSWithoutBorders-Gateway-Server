@@ -1,17 +1,15 @@
-#!/usr/bin/python3 
-
-# WS server that sends messages at random intervals
+#!/usr/bin/env python3 
 
 import asyncio
-import datetime
-import random
+# import datetime
+# import random
 import websockets
 import uuid
 import configparser
 import os
 import requests
 import ssl
-import pathlib
+# import pathlib
 import logging
 
 
@@ -168,13 +166,15 @@ async def serve_sessions(websocket, path):
         await connected[session_id].get_socket().send("201- paused")
     """
 
-def build_url() -> str:
+def construct_websocket_object():
     """Create the start connection url for the socket.
     Checks if SSL required files are present, then connect to wss.
     """
 
+    logging.debug("constructing connection websocket object")
     server_ip = __conf['websocket']['url']
     server_port = __conf['websocket']['port']
+    logging.debug("server %s -> port %s", server_ip, server_port)
 
     ssl_crt_filepath = __conf['ssl']['crt']
     ssl_key_filepath = __conf['ssl']['key']
@@ -185,26 +185,27 @@ def build_url() -> str:
             os.path.exists(ssl_key_path) and 
             os.path.exists(ssl_pem_filepath)):
 
-        logging.debug("websocket going secured")
-
+        logging.debug("websocket going secured with WSS")
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ssl_context.load_cert_chain(certfile=ssl_crt_filepath, 
                 keyfile=ssl_key_filepath)
 
-        __is_ssl = True
         return websockets.serve(serve_sessions, server_ip, server_port, ssl=ssl_context)
 
     else:
+        logging.debug("websocket going WS")
         return websockets.serve(serve_sessions, server_ip, server_port)
 
 
 if __name__ == "__main__":
     global __conf, __is_ssl
-    __is_ssl = False
+
+    logging.basicConfig(level='DEBUG')
     __conf = configparser.ConfigParser()
     __conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
 
-    connection_url = build_url()
+    connection_function = construct_websocket_object()
+    logging.debug("%s", connection_function)
 
-    asyncio.get_event_loop().run_until_complete(connection_url)
+    asyncio.get_event_loop().run_until_complete(connection_function)
     asyncio.get_event_loop().run_forever()

@@ -7,6 +7,7 @@ import logging
 import json
 
 from gateway_server.ledger import Ledger
+from gateway_server.sessions import Sessions
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +15,7 @@ CORS(app)
 # TODO get API version from ENV
 global __api_version_number
 __api_version_number = 2
+
 
 @app.route('/clients/status/<IMSI>', methods=['GET'])
 def get_client_imsi(IMSI):
@@ -91,17 +93,27 @@ def publish_record(Body: str, From: str) -> bool:
 
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
-def sessions(user_id):
+def sessions_start(user_id):
     """Begins a new synchronization session for User.
+    Actions:
+    - create user record and store session ID
+    - attach session ID to websocket url and return to agent
+
     Args:
             user_id (str): UserID provided when the user logs in
 
     Returns: {}, int
 
-    TODO:
-    - create user record and store session ID
-    - attach session ID to websocket url and return to user
     """
+    try:
+        user_session = Sessions(user_id=user_id)
+    except Exception as error:
+        logging.exception(error)
+    else:
+        gateway_server_websocket_url = ""
+        session_id = user_session.insert()
+
+        return "%s/%s" % (gateway_server_websocket_url, session_id), 200
 
     return '', 500
 
@@ -214,7 +226,6 @@ def create_clients(data: dict) -> None:
 
 
 if __name__ == "__main__":
-
     logging.basicConfig(level='DEBUG')
 
     debug = True

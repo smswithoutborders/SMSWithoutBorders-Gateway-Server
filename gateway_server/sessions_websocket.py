@@ -57,12 +57,9 @@ async def serve_sessions(websocket, path):
     The URLs are session urls which when connected to begin a handshake process for the requesting user
     """
 
-    logging.debug("new client connection: %s %s")
     # http://localhost/v2/sync/init/1s1s/sss
 
     if path.find('/v%s/sync/init' % (__api_version )) > -1:
-        logging.debug("initializing sync process for %s", session_id)
-
         split_path = path.split('/')
 
         if len(split_path) < 5:
@@ -71,6 +68,7 @@ async def serve_sessions(websocket, path):
 
         user_id = split_path[-2]
         session_id = split_path[-1]
+        logging.info("new client connection: %s %s", user_id, session_id)
 
         try:
             if session_id in __persistent_connections:
@@ -78,7 +76,7 @@ async def serve_sessions(websocket, path):
                 return
 
             client_socket = client_websocket(websocket)
-            connected[session_id] = client_socket
+            __persistent_connections[session_id] = client_socket
 
             session_change_counter = 0
             session_change_limit = int(__conf['sync']['session_change_limit'])
@@ -86,7 +84,7 @@ async def serve_sessions(websocket, path):
             session_paused_timeout = int(__conf['sync']['session_paused_timeout'])
 
             gateway_server_url = __conf['server']['url']
-            gateway_server_port = __conf['server']['port']
+            gateway_server_port = int(__conf['server']['port'])
 
             while(
                     session_change_counter < session_change_limit and 
@@ -135,8 +133,8 @@ async def serve_sessions(websocket, path):
                 logging.debug("removed client session %s", session_id)
 
         except Exception as error:
-            print(error)
-            print(websocket)
+            logging.exception(error)
+            raise error
 
 
     """

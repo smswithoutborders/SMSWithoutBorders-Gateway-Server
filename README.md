@@ -18,7 +18,7 @@ Synchronization is required to enable the users acquire security keys, platforms
 _The process of synchronization_
 1. Begin by requesting for a new session. This comes in the form of a url for an websocket which will begin
 streaming synchronization urls to the socket clients. The frequency of change of the synchronization urls depends
-on the configuration settings `[sync] session_sleep_timeout`. \
+on the configuration settings `[sync] session_sleep_timeout` (defaults = 15 seconds). \
 The total number of changes per frequency can be changed in `[sync] session_change_limit` (defaults = 3 times)
 
 `POST /<api-version>/sync/users/<user-id>`

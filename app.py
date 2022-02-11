@@ -7,7 +7,7 @@ import logging
 import json
 
 from gateway_server.ledger import Ledger
-from gateway_server.sessions import Sessions
+from gateway_server.users import Users
 
 app = Flask(__name__)
 CORS(app)
@@ -95,25 +95,37 @@ def publish_record(Body: str, From: str) -> bool:
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def sessions_start(user_id):
     """Begins a new synchronization session for User.
+    
+    A user can have multiple sessions.
+
     Actions:
-    - create user record and store session ID
-    - attach session ID to websocket url and return to agent
+    - create user record and store session ID.
+    - attach session ID to websocket url and return to agent.
 
     Args:
-            user_id (str): UserID provided when the user logs in
+            user_id (str): UserID provided when the user logs in.
 
     Returns: {}, int
+    
+    TODO:
+        - figure out mechanism to determine session expiration.
 
     """
     try:
-        user_session = Sessions(user_id=user_id)
+        user_session = Users(user_id)
     except Exception as error:
         logging.exception(error)
-    else:
-        gateway_server_websocket_url = ""
-        session_id = user_session.insert()
 
-        return "%s/%s" % (gateway_server_websocket_url, session_id), 200
+    else:
+        try:
+            gateway_server_websocket_url = ""
+            session_id = user_session.start_new_session()
+
+            return "%s/%s" % (gateway_server_websocket_url, session_id), 200
+
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
 
     return '', 500
 

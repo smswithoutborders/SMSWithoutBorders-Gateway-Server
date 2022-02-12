@@ -135,3 +135,16 @@ class Users:
         except Exception as error:
             raise error
 
+    def update_current_session(self, current_session_id: str, session_id: str = None) -> str:
+        try:
+            if not session_id:
+                session_id = uuid.uuid4().hex
+
+            cur = self.con.cursor()
+            cur.execute(
+                    f"UPDATE {self.user_id} SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
+                    {"session_id":session_id, "current_session_id":current_session_id, "user_id":session_id})
+            self.con.commit()
+        except Exception as error:
+            raise error
+

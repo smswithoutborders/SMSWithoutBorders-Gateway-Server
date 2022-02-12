@@ -100,7 +100,7 @@ async def serve_sessions(websocket, path):
 
                 await asyncio.sleep(session_sleep_timeout)
 
-                session_change_limit += 1
+                session_change_counter += 1
 
                 prev_session=session_id
 
@@ -112,7 +112,7 @@ async def serve_sessions(websocket, path):
                     except Exception as error:
                         logging.exception(error)
                     else:
-                        __persistent_connections[session_id] = client_websocket
+                        __persistent_connections[session_id] = client_socket
 
                 else:
                     await asyncio.sleep(session_paused_timeout)
@@ -135,6 +135,10 @@ async def serve_sessions(websocket, path):
 
             else:
                 logging.debug("removed client session %s", session_id)
+
+        except websockets.exceptions.ConnectionClosedError as error:
+            logging.warning("socket connection closed: %s", client_socket)
+            del __persistent_connections[session_id]
 
         except Exception as error:
             logging.exception(error)

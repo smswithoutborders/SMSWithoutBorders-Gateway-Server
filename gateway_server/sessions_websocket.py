@@ -157,6 +157,23 @@ async def serve_sessions(websocket, path):
             logging.exception(error)
             raise error
 
+
+    elif path.find('v%s/sync/pause' % (__api_version)) > -1:
+        split_path = path.split('/')
+
+        if len(split_path) < 5:
+            logging.error("Invalid pause request")
+            return
+
+        user_id = split_path[-2]
+        session_id = split_path[-1]
+
+        client_persistent_key = session_id + user_id
+        logigng.info("session paused requested: %s", client_persistent_key)
+
+        __persistent_connections[client_persistent_key].state = '__PAUSE__'
+        await __persistent_connections[client_persistent_key].get_socket().send("201- paused")
+
     """
     elif path.find('v%s/sync/ack' % (__api_version)) > -1:
         logging.debug("Acknowledging session")
@@ -175,14 +192,9 @@ async def serve_sessions(websocket, path):
 
         await connected[session_id].get_socket().send("200- acked")
         del connected[session_id]
-
-
-    elif path.find('/sync/pause') > -1:
-        print(">> paused seen...")
-        session_id = path.split('/')[3]
-        connected[session_id].state = 'pause'
-        await connected[session_id].get_socket().send("201- paused")
     """
+
+
 
 def construct_websocket_object():
     """Create the start connection url for the socket.

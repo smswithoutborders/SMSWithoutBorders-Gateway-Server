@@ -36,19 +36,22 @@ def update_session(session_id: str, gateway_server_url: str, gateway_server_port
     Return: str
     """
     try:
-        new_session_id = uuid.uuid4().hex
+        # new_session_id = uuid.uuid4().hex
 
         # example: http://localhost:5000/v2/sync/users/0000/sessions/11111
-        gateway_server_session_update_url = "%s:%d/v%d/sync/users/%s/sessions/%s/update/%s" % \
-                (gateway_server_url, gateway_server_port, __api_version, user_id, session_id, new_session_id)
+        gateway_server_session_update_url = "%s:%d/v%d/sync/users/%s/sessions/%s" % \
+                (gateway_server_url, gateway_server_port, __api_version, user_id, session_id)
         response = requests.put(gateway_server_session_update_url)
+
+        if response.status_code == 200:
+            new_session_id = response.text
+
+            return new_session_id
+        else:
+            raise Exception("update status failed: HTTP status code %d", response.status_code)
 
     except Exception as error:
         raise error
-
-    else:
-        return new_session_id
-
 
 async def serve_sessions(websocket, path):
     """Websocket connection required for synchronizing users.
@@ -71,12 +74,13 @@ async def serve_sessions(websocket, path):
         logging.info("new client connection: %s %s", user_id, session_id)
 
         try:
-            if session_id in __persistent_connections:
-                logging.warning("client already connected with session %s", session_id)
-                return
+            client_persistent_key = session_id + user_id
+            if client_persistent_key in __persistent_connections:
+                logging.warning("client already connected with session %s", client_persistent_key)
+                await websocket.close(reason='already connected')
 
             client_socket = client_websocket(websocket)
-            __persistent_connections[session_id] = client_socket
+            __persistent_connections[client_persistent_key] = client_socket
 
             session_change_counter = 0
             session_change_limit = int(__conf['sync']['session_change_limit'])
@@ -88,7 +92,7 @@ async def serve_sessions(websocket, path):
 
             while(
                     session_change_counter < session_change_limit and 
-                    __persistent_connections[session_id].state == '__RUN__'):
+                    __persistent_connections[client_persistent_key].state == '__RUN__'):
 
                 # example: http://localhost:5000/v2/sync/users/0000/sessions/11111/handshake
                 gateway_server_handshake_url = "%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % \
@@ -96,7 +100,7 @@ async def serve_sessions(websocket, path):
 
                 logging.debug("Gateway server handshake url %s", gateway_server_url)
 
-                await __persistent_connections[session_id].get_socket().send(gateway_server_handshake_url)
+                await __persistent_connections[client_persistent_key].get_socket().send(gateway_server_handshake_url)
 
                 await asyncio.sleep(session_sleep_timeout)
 
@@ -104,15 +108,23 @@ async def serve_sessions(websocket, path):
 
                 prev_session=session_id
 
-                if __persistent_connections[session_id].state != '__PAUSE__':
+                if __persistent_connections[client_persistent_key].state != '__PAUSE__':
                     try:
                         session_id = update_session(session_id=session_id, 
                                 gateway_server_url=gateway_server_url, gateway_server_port=gateway_server_port, 
                                 user_id=user_id)
+
                     except Exception as error:
-                        logging.exception(error)
+                        raise error
+
                     else:
-                        __persistent_connections[session_id] = client_socket
+                        new_client_persistent_key = session_id + user_id
+                        __persistent_connections[new_client_persistent_key] = __persistent_connections[client_persistent_key]
+
+                        del __persistent_connections[client_persistent_key]
+
+                        client_persistent_key = new_client_persistent_key
+                        logging.debug("updated session key to: %s", new_client_persistent_key)
 
                 else:
                     await asyncio.sleep(session_paused_timeout)
@@ -121,9 +133,10 @@ async def serve_sessions(websocket, path):
                     """
                     break
 
-            del __persistent_connections[session_id]
+            await __persistent_connections[client_persistent_key].get_socket().close()
+            del __persistent_connections[client_persistent_key]
 
-            logging.debug("removed client %s", session_id)
+            logging.debug("removed client %s", client_persistent_key)
 
             try:
                 session_id = update_session(session_id=session_id, 
@@ -134,16 +147,15 @@ async def serve_sessions(websocket, path):
                 logging.exception(error)
 
             else:
-                logging.debug("removed client session %s", session_id)
+                logging.debug("removed client session %s", client_persistent_key)
+                logging.info("%d clients remain connected", len(__persistent_connections))
 
         except websockets.exceptions.ConnectionClosedError as error:
             logging.warning("socket connection closed: %s", client_socket)
-            del __persistent_connections[session_id]
 
         except Exception as error:
             logging.exception(error)
             raise error
-
 
     """
     elif path.find('v%s/sync/ack' % (__api_version)) > -1:

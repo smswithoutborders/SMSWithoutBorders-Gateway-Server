@@ -71,7 +71,7 @@ class Users:
     def __create_table__(self):
         try:
             cur = self.con.cursor()
-            cur.execute(f'''CREATE TABLE IF NOT EXISTS {self.user_id}
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions
             (session_id TEXT NOT NULL,
             user_id TEXT NOT NULL,
             public_key TEXT,
@@ -104,7 +104,7 @@ class Users:
         cur = self.con.cursor()
         try:
             cur.execute(
-                f"INSERT INTO {self.user_id} (session_id, user_id, public_key, shared_key) VALUES(?,?,?,?)",
+                f"INSERT INTO sessions (session_id, user_id, public_key, shared_key) VALUES(?,?,?,?)",
                 (session_id, self.user_id, self.public_key, self.shared_key)
             )
             self.con.commit()
@@ -118,7 +118,7 @@ class Users:
         try:
             cur = self.con.cursor()
             cur.execute(
-                    f"UPDATE {self.user_id} SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
+                    f"UPDATE sessions SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
                     {"public_key":public_key, "user_id":self.user_id, "session_id":session_id})
             self.con.commit()
         except Exception as error:
@@ -129,7 +129,7 @@ class Users:
         try:
             cur = self.con.cursor()
             cur.execute(
-                    f"UPDATE {self.user_id} SET shared_key=:shared_key WHERE session_id=:session_id AND user_id=:user_id",
+                    f"UPDATE sessions SET shared_key=:shared_key WHERE session_id=:session_id AND user_id=:user_id",
                     {"shared_key":shared_key, "user_id":self.user_id, "session_id":session_id})
             self.con.commit()
         except Exception as error:
@@ -142,9 +142,11 @@ class Users:
 
             cur = self.con.cursor()
             cur.execute(
-                    f"UPDATE {self.user_id} SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
+                    f"UPDATE sessions SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
                     {"session_id":session_id, "current_session_id":current_session_id, "user_id":session_id})
             self.con.commit()
         except Exception as error:
             raise error
+        else:
+            return session_id
 

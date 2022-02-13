@@ -169,13 +169,13 @@ def sessions_user_update(user_id, session_id):
 
     TODO:
     """
-    logging.debug("updating user session from - %s to - %s", session_id, new_session_id)
+    # logging.debug("updating user session from - %s to - %s", session_id, new_session_id)
     try:
         user = Users(user_id)
     except Exception as error:
         logging.exception(error)
     else:
-        new_session_id = users.update_current_session(current_session_id)
+        new_session_id = user.update_current_session(session_id)
         return new_session_id, 200
 
     return '', 500

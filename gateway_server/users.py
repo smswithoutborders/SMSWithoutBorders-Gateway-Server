@@ -144,6 +144,7 @@ class Users:
             cur.execute(
                     f"UPDATE sessions SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
                     {"session_id":session_id, "current_session_id":current_session_id, "user_id":session_id})
+            logging.debug("rows affected: %s", cur.rowcount)
             self.con.commit()
         except Exception as error:
             raise error

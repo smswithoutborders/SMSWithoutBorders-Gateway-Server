@@ -41,7 +41,8 @@ The total number of changes per frequency can be changed in `[sync] session_chan
 
 `POST /<api-version>/sync/users/<user-id>`
 
-This returns a string url, which can be connected to by websocket clients.
+This returns a string url, which can be connected to by websocket clients. The users can begin communicating with this \
+returned URL or scan them through the QR scan function in the app.
 
 `''`, `200` session created
 

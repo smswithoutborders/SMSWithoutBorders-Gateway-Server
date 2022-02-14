@@ -175,26 +175,22 @@ async def serve_sessions(websocket, path):
         __persistent_connections[client_persistent_key].state = '__PAUSE__'
         await __persistent_connections[client_persistent_key].get_socket().send("201- paused")
 
-    """
-    elif path.find('v%s/sync/ack' % (__api_version)) > -1:
-        logging.debug("Acknowledging session")
 
+    elif path.find('v%s/sync/ack' % (__api_version)) > -1:
         split_path = path.split('/')
 
         if len(split_path) < 5:
-            logging.error("Invalid init request")
+            logging.error("Invalid ack request")
             return
 
         user_id = split_path[-2]
         session_id = split_path[-1]
 
-        session_id = path.split('/')[3]
-        connected[session_id].state = 'ack'
+        client_persistent_key = session_id + user_id
+        logging.info("session ack requested: %s", client_persistent_key)
 
-        await connected[session_id].get_socket().send("200- acked")
-        del connected[session_id]
-    """
-
+        await __persistent_connections[client_persistent_key].get_socket().send("200- ack")
+        del __persistent_connections[client_persistent_key]
 
 
 def construct_websocket_object():

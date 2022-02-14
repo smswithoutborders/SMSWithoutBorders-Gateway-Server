@@ -127,6 +127,7 @@ async def serve_sessions(websocket, path):
                         logging.debug("updated session key to: %s", new_client_persistent_key)
 
                 else:
+                    logging.info("Paused for %s seconds", session_paused_timeout)
                     await asyncio.sleep(session_paused_timeout)
                     """
                     session expires here, exiting loop
@@ -169,7 +170,7 @@ async def serve_sessions(websocket, path):
         session_id = split_path[-1]
 
         client_persistent_key = session_id + user_id
-        logigng.info("session paused requested: %s", client_persistent_key)
+        logging.info("session paused requested: %s", client_persistent_key)
 
         __persistent_connections[client_persistent_key].state = '__PAUSE__'
         await __persistent_connections[client_persistent_key].get_socket().send("201- paused")

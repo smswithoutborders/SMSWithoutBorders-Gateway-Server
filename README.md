@@ -22,6 +22,9 @@ pip3 install -r requirements.txt
 ```
 
 ### Directory structure
+_/gateway_server_ \
+Contains the Gateway [server websocket](gateway_server/sessions_websocket.py) sessions which is required to synchronize users.
+
 
 ### Configuration
 #### Configuring gateway server
@@ -36,16 +39,27 @@ cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 #### Synchronization
 Synchronization is required to enable the users acquire security keys, platforms and available gateways.
 
-_The process of synchronization_
-1. Begin by requesting for a new session. This comes in the form of a url for an websocket which will begin
-streaming synchronization urls to the socket clients. The frequency of change of the synchronization urls depends
-on the configuration settings `[sync] session_sleep_timeout` (defaults = 15 seconds). \
-The total number of changes per frequency can be changed in `[sync] session_change_limit` (defaults = 3 times)
+##### Manually setup sessions websocket
+```bash
+. venv/bin/activate
+python3 gateway_server/sessions_websocket.py
+```
 
-`POST /<api-version>/sync/users/<user-id>`
+##### Configurations
+All configurations for websockets can be done in the `conf.ini` file in `gateway_server` \
+`session_change_limit` : Number of times client websocket will receive session change urls \
+`session_sleep_timeout` : Number of seconds to sleep after sending a session change url to the client \
+`session_paused_timeout` : Number of seconds to remain in paused state before closing connection
 
+##### Synchronization flow
+1. Begin by requesting for a new session. \
+`POST /<api-version>/sync/users/<user-id>` \
+\
 This returns a string url, which can be connected to by websocket clients. The users can begin communicating with this \
-returned URL or scan them through the QR scan function in the app.
+returned URL or scan them through the QR scan function in the app. The frequency of change of the synchronization urls depends
+on the configuration settings `[sync] session_sleep_timeout` (defaults = 15 seconds). \
+\
+The total number of changes per frequency can be changed in `[sync] session_change_limit` (defaults = 3 times) \
 
 `''`, `200` session created
 

@@ -48,8 +48,11 @@ returned URL or scan them through the QR scan function in the app.
 
 `''`, `500` some error occured, check debug logs
 
-2. Once a sync url is connected, the websocket sends an acknowlegment `ACK - 200` and the socket connection is closed.
+2. Once a sync url is connected and begins processing, the websocket sends a pause text `201- pause`. \
 The user begins authentictating themselves and adding their security policies to their record on the server.
+
+3. Once the user has performed the necessary handshake and the information exchange has begun, the websocket sends an \
+acknowledgment text `200- ack`.
 
 <a name="testing" />
 

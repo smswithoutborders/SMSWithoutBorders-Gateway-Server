@@ -21,10 +21,13 @@ python3 -m virtualenv venv
 pip3 install -r requirements.txt
 ```
 
+### Directory structure
+
 ### Configuration
+#### Configuring gateway server
 - Copy the config files and edit the
-```
-cp .configs/example.config.ini .configs/config.ini
+```bash
+cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 ```
 
 #### How to-s

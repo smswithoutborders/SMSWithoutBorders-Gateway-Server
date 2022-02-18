@@ -272,5 +272,8 @@ def create_clients(data: dict) -> None:
 if __name__ == "__main__":
     logging.basicConfig(level='DEBUG')
 
-    debug = True
-    app.run(debug=debug)
+    debug = bool(__gateway_server_confs['server']['debug'])
+    host = __gateway_server_confs['server']['host']
+    port = int(__gateway_server_confs['server']['port'])
+
+    app.run(host=host, port=port, debug=True, threaded=True )

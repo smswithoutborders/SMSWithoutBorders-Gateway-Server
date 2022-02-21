@@ -87,7 +87,7 @@ async def serve_sessions(websocket, path):
             session_sleep_timeout = int(__conf['sync']['session_sleep_timeout'])
             session_paused_timeout = int(__conf['sync']['session_paused_timeout'])
 
-            gateway_server_url = __conf['server']['url']
+            gateway_server_url = __conf['server']['host']
             gateway_server_port = int(__conf['server']['port'])
 
             while(

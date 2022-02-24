@@ -59,7 +59,7 @@ All configurations for websockets can be done in the `conf.ini` file in `gateway
 
 ##### Synchronization flow
 1. Begin by requesting for a new session. \
-`POST /<api-version>/sync/users/<user-id>` \
+`GET /<api-version>/sync/users/<user-id>` \
 \
 This returns a string url, which can be connected to by websocket clients. The users can begin communicating with this \
 returned URL or scan them through the QR scan function in the app. The frequency of change of the synchronization urls depends

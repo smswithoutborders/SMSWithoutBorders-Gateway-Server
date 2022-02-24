@@ -128,7 +128,7 @@ def sessions_start(user_id):
 
     else:
         try:
-            gateway_server_websocket_url = __gateway_server_confs['websocket']['url']
+            gateway_server_websocket_url = __gateway_server_confs['websocket']['host']
             gateway_server_websocket_port = __gateway_server_confs['websocket']['port']
             session_id = user.start_new_session()
 
@@ -160,13 +160,36 @@ def sessions_public_key_exchange(user_id, session_id):
 
     try:
         data = request.json
+        logging.debug("data: %s", data)
     except Exception as error:
         return 'poorly formed json', 400
     else:
-        """
-        TODO:
-            - Generate public key and use
-        """
+        if not 'public_key' in data:
+            return 'missing public key', 400
+
+        user_public_key = data['public_key']
+        # TODO: validate is valid public key
+
+        public_key_filepath = __gateway_confs['security']['public_key_filepath']
+        private_key_filepath = __gateway_confs['security']['private_key_filepath']
+
+        with open(public_key_filepath, 'r') as public_key_fd:
+            gateway_server_public_key = public_key_fd.read()
+        
+        """Since key value pair is already present, it just returns it """
+
+        try:
+            user = Users(user_id)
+        except Exception as error:
+            logging.exception(error)
+        else:
+            try:
+                user.update_public_key(session_id = session_id, public_key=user_public_key)
+                return jsonify({"public_key": gateway_server_public_key})
+
+            except Exception as error:
+                logging.exception(error)
+                return "failed to update user's public key", 500
 
     return '', 500
 

@@ -114,13 +114,15 @@ class Users:
         return session_id
 
 
-    def update_public_key(self, public_key: str, session_id: str):
+    def update_public_key(self, public_key: str, session_id: str) -> int:
         try:
             cur = self.con.cursor()
             cur.execute(
                     f"UPDATE sessions SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
                     {"public_key":public_key, "user_id":self.user_id, "session_id":session_id})
             self.con.commit()
+            
+            return cur.rowcount
         except Exception as error:
             raise error
 

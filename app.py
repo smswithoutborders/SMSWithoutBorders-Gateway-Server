@@ -184,8 +184,11 @@ def sessions_public_key_exchange(user_id, session_id):
             logging.exception(error)
         else:
             try:
-                user.update_public_key(session_id = session_id, public_key=user_public_key)
-                return jsonify({"public_key": gateway_server_public_key})
+                if user.update_public_key(session_id = session_id, public_key=user_public_key) > 0:
+                    return jsonify({"public_key": gateway_server_public_key})
+                else:
+                    logging.error("failed to update user[%s] session[%s]", user_id, session_id)
+                return "failed to update user's public key", 400
 
             except Exception as error:
                 logging.exception(error)

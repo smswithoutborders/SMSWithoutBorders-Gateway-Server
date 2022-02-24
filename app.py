@@ -10,6 +10,7 @@ import json
 
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
+from security.rsa import SecurityRSA
 
 
 __api_version_number = 2
@@ -17,6 +18,10 @@ __api_version_number = 2
 __gateway_server_confs = configparser.ConfigParser()
 __gateway_server_confs.read(os.path.join(
     os.path.dirname(__file__), 'gateway_server/confs', 'conf.ini'))
+
+__gateway_confs = configparser.ConfigParser()
+__gateway_confs.read(os.path.join(
+    os.path.dirname(__file__), 'confs', 'conf.ini'))
 
 app = Flask(__name__)
 CORS(app)
@@ -141,17 +146,27 @@ def sessions_start(user_id):
 def sessions_public_key_exchange(user_id, session_id):
     """Generates a shared for the user attached to this session.
     Args:
-            user_id (str): UserID provided when the user logs in
+            user_id (str): User ID provided when the user logs in
             session_id (str): Unique ID as has been provided by the websocket connections. The use of this is to keep
             the user safe; changing the QR code during generated stops using expired QR codes during the sync process.
 
     Returns: {}, int
 
     TODO:
-    - Extract public key from body
-    - Store public_key key against session
-    - return own public key and user_id
+        - Extract public key from body
+        - Store public_key key against session
+        - return own public key and user_id
     """
+
+    try:
+        data = request.json
+    except Exception as error:
+        return 'poorly formed json', 400
+    else:
+        """
+        TODO:
+            - Generate public key and use
+        """
 
     return '', 500
 
@@ -269,11 +284,53 @@ def create_clients(data: dict) -> None:
         raise error
 
 
+def generate_keypair(private_key_filepath: str, public_key_filepath: str) -> tuple:
+    """Generates the main keypair values for Instance of Gateway server
+    """
+    # securityRSA = SecurityRSA()
+    public_key, private_key = SecurityRSA.generate_keypair_write(
+            private_key_filepath=private_key_filepath, 
+            public_key_filepath=public_key_filepath)
+
+    return public_key, private_key
+
+
+def check_has_keypair(private_key_filepath, public_key_filepath) -> bool:
+    """Checks if public keys are installed on the system.
+    """
+    if not os.path.isfile(public_key_filepath):
+        logging.debug("public key not present at: %s", public_key_filepath)
+        return False
+
+    if not os.path.isfile(private_key_filepath):
+        logging.debug("private key not present at: %s", private_key_filepath)
+        return False
+    
+    return True
+
+
 if __name__ == "__main__":
     logging.basicConfig(level='DEBUG')
 
-    debug = bool(__gateway_server_confs['server']['debug'])
-    host = __gateway_server_confs['server']['host']
-    port = int(__gateway_server_confs['server']['port'])
+    debug = bool(__gateway_confs['api']['debug'])
+    host = __gateway_confs['api']['host']
+    port = int(__gateway_confs['api']['port'])
 
-    app.run(host=host, port=port, debug=True, threaded=True )
+    __gateway_confs_public_key_filepath = __gateway_confs['security']['public_key_filepath']
+    __gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
+
+    if not check_has_keypair(
+            __gateway_confs_private_key_filepath,
+            __gateway_confs_public_key_filepath):
+
+        public_key, private_key = generate_keypair(
+                __gateway_confs_private_key_filepath, 
+                __gateway_confs_public_key_filepath)
+        logging.debug("Generated public key: %s", public_key)
+        logging.debug("Generated private key: %s", private_key)
+
+    logging.debug("- public key filepath: %s\n- private key filepath: %s", 
+            __gateway_confs_public_key_filepath,
+            __gateway_confs_private_key_filepath)
+
+    app.run(host=host, port=port, debug=debug, threaded=True )

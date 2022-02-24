@@ -83,12 +83,12 @@ async def serve_sessions(websocket, path):
             __persistent_connections[client_persistent_key] = client_socket
 
             session_change_counter = 0
-            session_change_limit = int(__conf['sync']['session_change_limit'])
-            session_sleep_timeout = int(__conf['sync']['session_sleep_timeout'])
-            session_paused_timeout = int(__conf['sync']['session_paused_timeout'])
+            session_change_limit = int(__conf['websocket_sync']['session_change_limit'])
+            session_sleep_timeout = int(__conf['websocket_sync']['session_sleep_timeout'])
+            session_paused_timeout = int(__conf['websocket_sync']['session_paused_timeout'])
 
-            gateway_server_url = __conf['server']['host']
-            gateway_server_port = int(__conf['server']['port'])
+            gateway_server_url = __gateway_conf['api']['host']
+            gateway_server_port = int(__gateway_conf['api']['port'])
 
             while(
                     session_change_counter < session_change_limit and 
@@ -199,13 +199,13 @@ def construct_websocket_object():
     """
 
     logging.debug("constructing connection websocket object")
-    server_ip = __conf['websocket']['url']
+    server_ip = __conf['websocket']['host']
     server_port = __conf['websocket']['port']
     logging.debug("server %s -> port %s", server_ip, server_port)
 
-    ssl_crt_filepath = __conf['ssl']['crt']
-    ssl_key_filepath = __conf['ssl']['key']
-    ssl_pem_filepath = __conf['ssl']['pem']
+    ssl_crt_filepath = __conf['websocket_ssl']['crt']
+    ssl_key_filepath = __conf['websocket_ssl']['key']
+    ssl_pem_filepath = __conf['websocket_ssl']['pem']
 
     if(
             os.path.exists(ssl_crt_filepath) and 
@@ -225,11 +225,14 @@ def construct_websocket_object():
 
 
 if __name__ == "__main__":
-    global __conf, __is_ssl
+    global __conf, __gateway_conf, __is_ssl
 
     logging.basicConfig(level='DEBUG')
     __conf = configparser.ConfigParser()
     __conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
+
+    __gateway_conf = configparser.ConfigParser()
+    __gateway_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
 
     connection_function = construct_websocket_object()
     logging.debug("%s", connection_function)

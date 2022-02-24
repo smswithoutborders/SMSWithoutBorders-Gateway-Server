@@ -27,6 +27,12 @@ Contains the Gateway [server websocket](gateway_server/sessions_websocket.py) se
 
 
 ### Configuration
+#### Configuring gateway's API
+- Copy the config files and edit the
+```bash
+cp confs/example.conf.ini confs/conf.ini
+```
+
 #### Configuring gateway server
 - Copy the config files and edit the
 ```bash

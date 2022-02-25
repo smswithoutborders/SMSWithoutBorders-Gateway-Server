@@ -26,7 +26,7 @@ class client_websocket:
 
 __persistent_connections = {}
 
-def update_session(session_id: str, gateway_server_url: str, gateway_server_port: int, user_id: str) -> str:
+def update_session(session_id: str, api_host: str, api_port: int, user_id: str, api_protocol: str="http") -> str:
     """Updates sessions for client.
     Makes the request for new session and update it on the user's database.
 
@@ -39,9 +39,14 @@ def update_session(session_id: str, gateway_server_url: str, gateway_server_port
         # new_session_id = uuid.uuid4().hex
 
         # example: http://localhost:5000/v2/sync/users/0000/sessions/11111
-        gateway_server_session_update_url = "%s:%d/v%d/sync/users/%s/sessions/%s" % \
-                (gateway_server_url, gateway_server_port, __api_version, user_id, session_id)
-        response = requests.put(gateway_server_session_update_url)
+        api_session_update_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s" % (
+                api_protocol,
+                api_host, 
+                api_port, 
+                __api_version, 
+                user_id, 
+                session_id)
+        response = requests.put(api_session_update_url)
 
         if response.status_code == 200:
             new_session_id = response.text
@@ -87,20 +92,33 @@ async def serve_sessions(websocket, path):
             session_sleep_timeout = int(__conf['websocket_sync']['session_sleep_timeout'])
             session_paused_timeout = int(__conf['websocket_sync']['session_paused_timeout'])
 
-            gateway_server_url = __gateway_conf['api']['host']
-            gateway_server_port = int(__gateway_conf['api']['port'])
+            api_host = __api_conf['api']['host']
+            api_port = int(__api_conf['api']['port'])
+
+            api_ssl_crt_filepath = __api_conf['api_ssl']['crt']
+            api_ssl_key_filepath = __api_conf['api_ssl']['key']
+
+            api_protocol = "http"
+            if (
+                    os.path.exists(api_ssl_crt_filepath) and 
+                    os.path.exists(api_ssl_key_filepath)):
+                api_protocol = "https"
 
             while(
                     session_change_counter < session_change_limit and 
                     __persistent_connections[client_persistent_key].state == '__RUN__'):
 
                 # example: http://localhost:5000/v2/sync/users/0000/sessions/11111/handshake
-                gateway_server_handshake_url = "%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % \
-                        (gateway_server_url, gateway_server_port, __api_version, user_id, session_id)
+                api_handshake_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
+                        api_protocol,
+                        api_host, 
+                        api_port, 
+                        __api_version, user_id, 
+                        session_id)
 
-                logging.debug("Gateway server handshake url %s", gateway_server_url)
+                logging.debug("Gateway server handshake url %s", api_host)
 
-                await __persistent_connections[client_persistent_key].get_socket().send(gateway_server_handshake_url)
+                await __persistent_connections[client_persistent_key].get_socket().send(api_handshake_url)
 
                 await asyncio.sleep(session_sleep_timeout)
 
@@ -110,9 +128,12 @@ async def serve_sessions(websocket, path):
 
                 if __persistent_connections[client_persistent_key].state != '__PAUSE__':
                     try:
-                        session_id = update_session(session_id=session_id, 
-                                gateway_server_url=gateway_server_url, gateway_server_port=gateway_server_port, 
-                                user_id=user_id)
+                        session_id = update_session(
+                                session_id=session_id, 
+                                api_host=api_host, 
+                                api_port=api_port, 
+                                user_id=user_id,
+                                api_protocol=api_protocol)
 
                     except Exception as error:
                         raise error
@@ -140,9 +161,12 @@ async def serve_sessions(websocket, path):
             logging.debug("removed client %s", client_persistent_key)
 
             try:
-                session_id = update_session(session_id=session_id, 
-                        gateway_server_url=gateway_server_url, gateway_server_port=gateway_server_port, 
-                        user_id=user_id)
+                session_id = update_session(
+                        session_id=session_id, 
+                        api_host=api_host, 
+                        api_port=api_port, 
+                        user_id=user_id, 
+                        api_protocol=api_protocol)
             
             except Exception as error:
                 logging.exception(error)
@@ -225,14 +249,14 @@ def construct_websocket_object():
 
 
 if __name__ == "__main__":
-    global __conf, __gateway_conf, __is_ssl
+    global __conf, __api_conf, __is_ssl
 
     logging.basicConfig(level='DEBUG')
     __conf = configparser.ConfigParser()
     __conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
 
-    __gateway_conf = configparser.ConfigParser()
-    __gateway_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
+    __api_conf = configparser.ConfigParser()
+    __api_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
 
     connection_function = construct_websocket_object()
     logging.debug("%s", connection_function)

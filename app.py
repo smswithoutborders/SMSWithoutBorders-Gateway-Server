@@ -7,6 +7,7 @@ import os
 import configparser
 import logging
 import json
+import websocket
 
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
@@ -132,9 +133,22 @@ def sessions_start(user_id):
             gateway_server_websocket_port = __gateway_server_confs['websocket']['port']
             session_id = user.start_new_session()
 
-            # http://localhost/v2/sync/init/1s1s/sss
-            return "%s:%s/v%s/sync/init/%s/%s" % (gateway_server_websocket_url,
-                    gateway_server_websocket_port, __api_version_number, user_id, session_id), 200
+            # ws://localhost/v2/sync/init/1s1s/sss
+            websocket_ssl_crt_filepath = __gateway_server_confs['websocket_ssl']['crt']
+            websocket_ssl_key_filepath = __gateway_server_confs['websocket_ssl']['key']
+
+            websocket_protocol = "ws"
+            if (
+                    os.path.exists(websocket_ssl_crt_filepath) and 
+                    os.path.exists(websocket_ssl_key_filepath)):
+                websocket_protocol = "wss"
+                        
+
+            return "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
+                    gateway_server_websocket_url,
+                    gateway_server_websocket_port, 
+                    __api_version_number, 
+                    user_id, session_id), 200
 
         except Exception as error:
             logging.exception(error)
@@ -166,6 +180,9 @@ def sessions_public_key_exchange(user_id, session_id):
     else:
         if not 'public_key' in data:
             return 'missing public key', 400
+
+        websocket_message(message='__PAUSE__', 
+                user_id = user_id, session_id = session_id)
 
         user_public_key = data['public_key']
         # TODO: validate is valid public key
@@ -333,6 +350,65 @@ def check_has_keypair(private_key_filepath, public_key_filepath) -> bool:
         return False
     
     return True
+
+def websocket_message(message: str, user_id: str, session_id: str) -> None:
+    """Messages the default gateway server websocket.
+
+    Args:
+        message (str):
+            Should contain the state of the synchronization process. Either of the following:
+                - __PAUSE__
+                - __ACK__
+    """
+
+    ssl_context=None
+    websocket_ssl_crt_filepath = __gateway_server_confs['websocket_ssl']['crt']
+    websocket_ssl_key_filepath = __gateway_server_confs['websocket_ssl']['key']
+    # websocket_ssl_pem_filepath = __gateway_server_confs['websocket_ssl']['pem']
+
+    websocket_protocol = "ws"
+    if (
+            os.path.exists(websocket_ssl_crt_filepath) and 
+            os.path.exists(websocket_ssl_key_filepath)):
+
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(certfile=websocket_ssl_crt_filepath, keyfile=websocket_ssl_key_filepath)
+        websocket_protocol = "wss"
+
+    '''
+    if message == 'ack':
+        # uri= f"ws://localhost:{CONFIGS['WEBSOCKET']['PORT']}/sync/ack/{session_id}"
+        uri= f"{CONFIGS['WEBSOCKET']['URL']}:{CONFIGS['WEBSOCKET']['PORT']}/sync/ack/{session_id}"
+        print(uri)
+        ws = websocket.WebSocketApp(uri, on_error=socket_message_error)
+        if not ssl_context == None:
+            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+        else:
+            ws.run_forever()
+    '''
+
+    if message == '__PAUSE__':
+        def socket_message_error(wsapp, error):
+            logging.error(error)
+
+        # ws://localhost:6996/v2/sync/pause/user_id/session_id
+        websocket_url = "%s://%s:%s/v%s/sync/pause/%s/%s" % (
+                websocket_protocol,
+                __gateway_server_confs['websocket']['host'],
+                __gateway_server_confs['websocket']['port'],
+                __api_version_number,
+                user_id,
+                session_id)
+
+        logging.debug("pausing url: %s", websocket_url)
+        ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
+        if not ssl_context == None:
+            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+        else:
+            ws.run_forever()
+
+    else:
+        logging.error("Unknown socket message %s", message)
 
 
 if __name__ == "__main__":

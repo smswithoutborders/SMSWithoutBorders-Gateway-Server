@@ -42,6 +42,14 @@ cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 #### How to-s
 <a name="synchronization" />
 
+#### Start Gateway API
+
+##### Manually start Gateway API
+```bash
+. venv/bin/activate
+python3 api.py
+```
+
 #### Synchronization
 Synchronization is required to enable the users acquire security keys, platforms and available gateways.
 

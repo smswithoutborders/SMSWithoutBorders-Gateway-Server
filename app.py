@@ -201,6 +201,11 @@ def sessions_public_key_exchange(user_id, session_id):
             logging.exception(error)
         else:
             try:
+                """
+                TODO:
+                    - Check for other criterias here, for example -
+                        - does session already have a public key?
+                """
                 if user.update_public_key(session_id = session_id, public_key=user_public_key) > 0:
                     return jsonify({"public_key": gateway_server_public_key})
                 else:

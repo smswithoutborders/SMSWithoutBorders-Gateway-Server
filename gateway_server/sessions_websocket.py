@@ -3,6 +3,7 @@
 import asyncio
 # import datetime
 # import random
+import socket
 import websockets
 import uuid
 import configparser
@@ -15,7 +16,28 @@ import logging
 
 __api_version = 2
 
+def get_interface_ip(family: socket.AddressFamily) -> str:
+    # This method was extracted from pallet/flask (flask)
+    # https://github.com/pallets/werkzeug/blob/a44c1d76689ae6608d1783ac628127150826c809/src/werkzeug/serving.py#L925
+    """Get the IP address of an external interface. Used when binding to
+    0.0.0.0 or ::1 to show a more useful URL.
+    :meta private:
+    """
+    # arbitrary private address
+    host = "fd31:f903:5ab5:1::1" if family == socket.AF_INET6 else "10.253.155.219"
+
+    with socket.socket(family, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect((host, 58162))
+        except OSError:
+            return "::1" if family == socket.AF_INET6 else "127.0.0.1"
+
+        return s.getsockname()[0]  # type: ignore
+
 class client_websocket:
+    """Manages states of each client connecting.
+    """
+
     state = '__RUN__'
     def __init__(self, websocket):
         self.websocket = websocket
@@ -93,6 +115,15 @@ async def serve_sessions(websocket, path):
             session_paused_timeout = int(__conf['websocket_sync']['session_paused_timeout'])
 
             api_host = __api_conf['api']['host']
+            api_state = __api_conf['api']['state']
+            """
+            - If api_host == 0.0.0.0:
+                Then it should be converted to local ip address.
+            - Assumption is it would be bad practice to use 0.0.0.0 on a production server.
+            """
+            api_host = get_interface_ip(socket.AF_INET) if(
+                    api_host == "0.0.0.0" and api_state != "production") else api_host
+
             api_port = int(__api_conf['api']['port'])
 
             api_ssl_crt_filepath = __api_conf['api_ssl']['crt']

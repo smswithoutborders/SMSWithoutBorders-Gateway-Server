@@ -29,7 +29,7 @@ def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
         state (bool), user_management_auth_payload (requests.Response)
     """
 
-    user_management_api_auth_url = __conf['user_management_api']['verify_url'] % \
+    user_management_api_auth_url = __conf['user_management_api']['verification_url'] % \
             (user_id)
 
     response = requests.post(

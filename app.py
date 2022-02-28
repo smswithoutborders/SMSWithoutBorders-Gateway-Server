@@ -308,19 +308,25 @@ def sessions_user_fetch(user_id, session_id):
                     user = Users(user_id) 
                     shared_key = user.update_shared_key(session_id=session_id)
 
+                    user_public_key = user.get_public_key()
+                    if len(user_public_key) < 1:
+                        return 'invalid session requested', 400
+
+                    user_public_key = user_public_key[0][0]
+                    logging.debug("user public key: %s", user_public_key)
                 except Exception as error:
                     logging.exception(error)
                     return '', 500
                 else:
                     shared_key: bytes = SecurityRSA.encrypt(
                             data=shared_key, public_key=user_public_key)
-                    shared_key = encrypted_shared_key.decode('utf-8')
 
-                    # select only saved_platforms
-                    user_platforms: dict = {}
+                    shared_key = shared_key.decode('utf-8')
+
+                    # TODO:
                     gateway_clients: dict = {}
 
-                    response_payload: dict = sessions_websocket.user_management_api_request_platforms(
+                    user_platforms: dict = sessions_websocket.user_management_api_request_platforms(
                             headers=response.header,
                             user_id = user_id)
 

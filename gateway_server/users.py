@@ -5,6 +5,8 @@ import logging
 import uuid
 import os
 
+from helpers import helpers
+
 class Users:
 
     def __init__(self, user_id:str) -> None:
@@ -71,7 +73,7 @@ class Users:
     def __create_table__(self):
         try:
             cur = self.con.cursor()
-            cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions
+            cur.execute('''CREATE TABLE IF NOT EXISTS sessions
             (session_id TEXT NOT NULL,
             user_id TEXT NOT NULL,
             public_key TEXT,
@@ -104,7 +106,7 @@ class Users:
         cur = self.con.cursor()
         try:
             cur.execute(
-                f"INSERT INTO sessions (session_id, user_id, public_key, shared_key) VALUES(?,?,?,?)",
+                "INSERT INTO sessions (session_id, user_id, public_key, shared_key) VALUES(?,?,?,?)",
                 (session_id, self.user_id, self.public_key, self.shared_key)
             )
             self.con.commit()
@@ -118,7 +120,7 @@ class Users:
         try:
             cur = self.con.cursor()
             cur.execute(
-                    f"UPDATE sessions SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
+                    "UPDATE sessions SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
                     {"public_key":public_key, "user_id":self.user_id, "session_id":session_id})
             self.con.commit()
             
@@ -127,15 +129,25 @@ class Users:
             raise error
 
 
-    def update_shared_key(self, shared_key: str, session_id: str):
+    def update_shared_key(self, session_id: str) -> str:
+        """Generates and updates user's shared key.
+        """
         try:
-            cur = self.con.cursor()
-            cur.execute(
-                    f"UPDATE sessions SET shared_key=:shared_key WHERE session_id=:session_id AND user_id=:user_id",
-                    {"shared_key":shared_key, "user_id":self.user_id, "session_id":session_id})
-            self.con.commit()
+            shared_key = helpers.generate_shared_key()
         except Exception as error:
             raise error
+        else:
+            try:
+                cur = self.con.cursor()
+                cur.execute(
+                        "UPDATE sessions SET shared_key=:shared_key WHERE session_id=:session_id AND user_id=:user_id",
+                        {"shared_key":shared_key, "user_id":self.user_id, "session_id":session_id})
+                self.con.commit()
+
+            except Exception as error:
+                raise error
+            else:
+                return shared_key
 
     def update_current_session(self, current_session_id: str, session_id: str = None) -> str:
         try:
@@ -144,7 +156,7 @@ class Users:
 
             cur = self.con.cursor()
             cur.execute(
-                    f"UPDATE sessions SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
+                    "UPDATE sessions SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
                     {"session_id":session_id, "current_session_id":current_session_id, "user_id":session_id})
             logging.debug("rows affected: %s", cur.rowcount)
             self.con.commit()
@@ -152,4 +164,17 @@ class Users:
             raise error
         else:
             return session_id
+    
+    def get_public_key(self) -> str:
+        """Gets the user's stored public key.
+        """
+
+        try:
+            cur = self.con.cursor()
+            cur.execute("SELECT public_key FROM sessions WHERE session_id=:session_id", 
+                    {"session_id":session_id})
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
 

@@ -16,6 +16,55 @@ import logging
 
 __api_version = 2
 
+def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
+    """Authenticates users at the user management api level.
+
+    Args:
+        password (str): Password for user when they created the account.
+
+        user_id (str): unique identifier for the intended user. Assigned
+        when account was created.
+
+    Returns:
+        state (bool), user_management_auth_payload (requests.Response)
+    """
+
+    user_management_api_auth_url = __conf['user_management_api']['verify_url'] % \
+            (user_id)
+
+    response = requests.post(
+            user_management_api_auth_url,
+            json={"password":password})
+
+    response.raise_for_status()
+
+    return true, response
+
+
+def user_management_api_request_platforms(headers: dict, user_id: str) -> dict:
+    """Request for the user's stored platforms.
+
+    Args:
+        headers (dict): Should be extracted from an authentication response.
+
+        user_id (str): unique identifier for the intended user. Assigned
+        when account was created.
+
+    Returns:
+        json_response (dict)
+    """
+ 
+    user_management_api_platform_request_url = __conf['user_management_api']['platforms_url'] % \
+            (user_id)
+    response = requests.get(
+            user_management_api_platform_request_url, 
+            headers=headers)
+
+    response.raise_for_status()
+
+    return response.json()
+
+
 def get_interface_ip(family: socket.AddressFamily) -> str:
     # This method was extracted from pallet/flask (flask)
     # https://github.com/pallets/werkzeug/blob/a44c1d76689ae6608d1783ac628127150826c809/src/werkzeug/serving.py#L925

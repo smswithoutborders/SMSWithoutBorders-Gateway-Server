@@ -101,7 +101,8 @@ python -m unittest gateway_server/test/UTestUsers.py
 ./websocat_linux64 ws://localhost:6996/v2/sync/init/111/000
 ```
 
-- Testing [RSA encryptions/decryptions]*(test/security_rsa.py)
+- Testing [RSA Encryption/Decryption](test/security_rsa.py)
+This will require pem files. Copy them into the test/ dir to allow test run
 ```bash
 python -m unittest test/security_rsa.py
 ```

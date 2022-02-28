@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Use this for IDEs to check data types
+# https://docs.python.org/3/library/typing.html
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from base64 import b64decode, b64encode
@@ -9,6 +12,7 @@ import logging
 import json
 import websocket
 
+from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
 from security.rsa import SecurityRSA
@@ -279,7 +283,57 @@ def sessions_user_fetch(user_id, session_id):
         if not 'password' in data:
             return 'missing password', 400
 
-        # decrypted_password = 
+        __gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
+
+        try:
+            decrypted_password = SecurityRSA.decrypt(
+                    data=data['password'],
+                    private_key_filepath=__gateway_confs_private_key_filepath)
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
+        else:
+            try:
+                state, response_payload = \
+                        sessions_websocket.user_management_api_authenticate_user( 
+                                password=decrypted_password, 
+                                user_id = user_id )
+
+                logging.debug("Authenticated successfully: %s", response_payload)
+
+                # Authentication details are stored in the cookies, so use them for further request
+                # Shouldn't be stored because they expire after a while
+
+                try:
+                    user = Users(user_id) 
+                    shared_key = user.update_shared_key(session_id=session_id)
+
+                except Exception as error:
+                    logging.exception(error)
+                    return '', 500
+                else:
+                    shared_key: bytes = SecurityRSA.encrypt(
+                            data=shared_key, public_key=user_public_key)
+                    shared_key = encrypted_shared_key.decode('utf-8')
+
+                    # select only saved_platforms
+                    user_platforms: dict = {}
+                    gateway_clients: dict = {}
+
+                    response_payload: dict = sessions_websocket.user_management_api_request_platforms(
+                            headers=response.header,
+                            user_id = user_id)
+
+                    return jsonify(
+                            {
+                                "shared_key": shared_key,
+                                "user_platforms": user_platforms,
+                                "gateway_clients": gateway_clients
+                                }), 200
+
+            except Exception as error:
+                logging.exception(error)
+                return '', 400
 
     return '', 500
 
@@ -430,7 +484,6 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
 
     else:
         logging.error("Unknown socket message %s", message)
-
 
 if __name__ == "__main__":
     logging.basicConfig(level='DEBUG')

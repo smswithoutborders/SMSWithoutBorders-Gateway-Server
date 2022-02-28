@@ -8,7 +8,7 @@ import base64
 import logging
 
 class SecurityRSA:
-    def generate_keypair(self, keysize:int = 1024) -> tuple:
+    def generate_keypair(self, keysize:int = 2048) -> tuple:
 
         """Generate public and private keypair and return them.
 
@@ -27,7 +27,7 @@ class SecurityRSA:
     @staticmethod
     def generate_keypair_write( 
             private_key_filepath: str="private.pem", 
-            public_key_filepath: str="public.pem", keysize: int=1024) -> tuple:
+            public_key_filepath: str="public.pem", keysize: int=2048) -> tuple:
 
         """Generate public and private keypair and write them.
         
@@ -64,20 +64,25 @@ class SecurityRSA:
 
         Args:
             data (str): Base64 encrypted input.
+            private_key_filepath (str): path to private key (private.pem) on system.
         """
 
         with open(private_key_filepath) as fd:
             private_key = RSA.import_key(fd.read())
 
-        private_key = PKCS1_OAEP.new(
-                key=private_key, 
-                hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+        try:
+            private_key = PKCS1_OAEP.new(
+                    key=private_key, 
+                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
 
-        # decode base64
-        data = base64.b64decode(data)
-        decrypted_text = private_key.decrypt(data)
+            data = base64.b64decode(data)
+            decrypted_text = private_key.decrypt(data)
 
-        return decrypted_text
+        except Exception as error:
+            raise error
+        
+        else:
+            return decrypted_text
 
 
     def _decrypt(self, data: bytes) -> bytes:

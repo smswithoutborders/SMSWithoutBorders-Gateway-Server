@@ -100,3 +100,8 @@ python -m unittest gateway_server/test/UTestUsers.py
 ```bash
 ./websocat_linux64 ws://localhost:6996/v2/sync/init/111/000
 ```
+
+- Testing [RSA encryptions/decryptions]*(test/security_rsa.py)
+```bash
+python -m unittest test/security_rsa.py
+```

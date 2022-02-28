@@ -206,8 +206,14 @@ def sessions_public_key_exchange(user_id, session_id):
                     - Check for other criterias here, for example -
                         - does session already have a public key?
                 """
+                verification_url = '/v%s/sync/users/%s/sessions/%s' % \
+                        (__api_version_number, user_id, session_id)
+
                 if user.update_public_key(session_id = session_id, public_key=user_public_key) > 0:
-                    return jsonify({"public_key": gateway_server_public_key})
+                    return jsonify(
+                            {"public_key": gateway_server_public_key,
+                                "verification_url": verification_url
+                                })
                 else:
                     logging.error("failed to update user[%s] session[%s]", user_id, session_id)
                 return "failed to update user's public key", 400
@@ -264,6 +270,16 @@ def sessions_user_fetch(user_id, session_id):
     - Generate and store secret (shared) key for against user
     - Return platforms, gateways, user ID and secret key to user
     """
+
+    try:
+        data = request.json
+    except Exception as error:
+        return 'invalid json', 400
+    else:
+        if not 'password' in data:
+            return 'missing password', 400
+
+        # decrypted_password = 
 
     return '', 500
 

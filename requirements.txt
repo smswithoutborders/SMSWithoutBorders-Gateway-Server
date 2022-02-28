@@ -12,6 +12,7 @@ Jinja2==3.0.2
 MarkupSafe==2.0.1
 pika==1.2.0
 pycryptodome==3.14.1
+pycryptodomex==3.14.1
 requests==2.26.0
 six==1.16.0
 urllib3==1.26.7

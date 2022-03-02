@@ -1,8 +1,6 @@
 #!/usr/bin/env python3 
 
 import asyncio
-# import datetime
-# import random
 import socket
 import websockets
 import uuid
@@ -10,11 +8,13 @@ import configparser
 import os
 import requests
 import ssl
-# import pathlib
 import logging
 
 
 __api_version = 2
+
+__conf = configparser.ConfigParser(interpolation=None)
+__conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
 
 def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
     """Authenticates users at the user management api level.
@@ -329,11 +329,9 @@ def construct_websocket_object():
 
 
 if __name__ == "__main__":
-    global __conf, __api_conf, __is_ssl
+    global __api_conf, __is_ssl
 
     logging.basicConfig(level='DEBUG')
-    __conf = configparser.ConfigParser()
-    __conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
 
     __api_conf = configparser.ConfigParser()
     __api_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))

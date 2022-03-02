@@ -289,6 +289,7 @@ def sessions_user_fetch(user_id, session_id):
             decrypted_password = SecurityRSA.decrypt(
                     data=data['password'],
                     private_key_filepath=__gateway_confs_private_key_filepath)
+            decrypted_password = decrypted_password.decode('utf-8')
         except Exception as error:
             logging.exception(error)
             return '', 500
@@ -339,7 +340,6 @@ def sessions_user_fetch(user_id, session_id):
 
             except Exception as error:
                 logging.exception(error)
-                return '', 400
 
     return '', 500
 

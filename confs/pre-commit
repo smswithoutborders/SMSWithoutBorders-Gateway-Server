@@ -1,0 +1,18 @@
+#!/bin/sh
+
+
+echo ">> Checking if changes to the requirements file"
+
+# works in the root dir of the git
+# ls
+# verified by running ls from within this hook
+
+FILE="requirements.txt"
+
+if [ ! -z "$VIRTUAL_ENV" ]; then
+	# update requirements docs proceed with commit
+	pip freeze > $FILE
+	echo -e ">> Updated $FILE with pip requirements.\n"
+else
+	echo -e ">> Not in a virtualenv.\n"
+fi

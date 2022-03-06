@@ -276,6 +276,7 @@ def sessions_user_fetch(user_id, session_id):
     """
 
     try:
+        logging.debug(request.data)
         data = request.json
     except Exception as error:
         return 'invalid json', 400
@@ -286,10 +287,21 @@ def sessions_user_fetch(user_id, session_id):
         __gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
 
         try:
+            """
+            Password is in base64 and encrypted with server's public key
+            """
+            password = data['password']
+
             decrypted_password = SecurityRSA.decrypt(
-                    data=data['password'],
+                    data=password,
                     private_key_filepath=__gateway_confs_private_key_filepath)
             decrypted_password = decrypted_password.decode('utf-8')
+
+            """
+            TODO:
+            REMOVE
+            """
+            logging.debug("decrypted password: %s", decrypted_password)
         except Exception as error:
             logging.exception(error)
             return '', 500

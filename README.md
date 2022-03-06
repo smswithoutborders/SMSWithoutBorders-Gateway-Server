@@ -98,8 +98,14 @@ python -m unittest gateway_server/test/UTestUsers.py
 
 [https://github.com/vi/websocat](https://github.com/vi/websocat)
 
+*Manjaro*
 ```bash
-./websocat_linux64 ws://localhost:6996/v2/sync/init/111/000
+sudo pacman -S websocat jq
+```
+
+*Testing websocket*
+```bash
+websocat ws://localhost:6996/v2/sync/init/111/000
 ```
 
 - Testing [RSA Encryption/Decryption](test/security_rsa.py)

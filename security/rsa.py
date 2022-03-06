@@ -67,6 +67,7 @@ class SecurityRSA:
             private_key_filepath (str): path to private key (private.pem) on system.
         """
 
+        logging.debug(data)
         with open(private_key_filepath) as fd:
             private_key = RSA.import_key(fd.read())
 

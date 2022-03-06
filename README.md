@@ -19,8 +19,8 @@ cd SMSWithoutBorders-Gateway-Server
 python3 -m virtualenv venv
 . venv/bin/activate
 pip3 install -r requirements.txt
-make
 ```
+Optionally, run `make` to install git hooks
 
 ### Directory structure
 _/gateway_server_ \

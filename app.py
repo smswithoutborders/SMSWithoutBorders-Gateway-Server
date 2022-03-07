@@ -5,7 +5,7 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from base64 import b64decode, b64encode
+import base64
 import os
 import configparser
 import logging
@@ -177,9 +177,10 @@ def sessions_public_key_exchange(user_id, session_id):
     """
 
     try:
-        data = request.json
-        logging.debug("data: %s", data)
+        logging.debug(request.data)
+        data = json.loads(request.data, strict=False)
     except Exception as error:
+        logging.exception(error)
         return 'poorly formed json', 400
     else:
         if not 'public_key' in data:
@@ -291,6 +292,7 @@ def sessions_user_fetch(user_id, session_id):
             Password is in base64 and encrypted with server's public key
             """
             password = data['password']
+            logging.debug("encrypted password: %r", password)
 
             decrypted_password = SecurityRSA.decrypt(
                     data=password,
@@ -301,18 +303,18 @@ def sessions_user_fetch(user_id, session_id):
             TODO:
             REMOVE
             """
-            logging.debug("decrypted password: %s", decrypted_password)
+            logging.debug("decrypted password: %r", decrypted_password)
         except Exception as error:
             logging.exception(error)
             return '', 500
         else:
             try:
-                state, response_payload = \
+                state, request_payload = \
                         sessions_websocket.user_management_api_authenticate_user( 
                                 password=decrypted_password, 
                                 user_id = user_id )
 
-                logging.debug("Authenticated successfully: %s", response_payload)
+                logging.debug("Authenticated successfully")
 
                 # Authentication details are stored in the cookies, so use them for further request
                 # Shouldn't be stored because they expire after a while
@@ -321,7 +323,8 @@ def sessions_user_fetch(user_id, session_id):
                     user = Users(user_id) 
                     shared_key = user.update_shared_key(session_id=session_id)
 
-                    user_public_key = user.get_public_key()
+                    user_public_key = user.get_public_key(session_id=session_id)
+                    logging.debug("public key: %s", user_public_key)
                     if len(user_public_key) < 1:
                         return 'invalid session requested', 400
 
@@ -331,21 +334,22 @@ def sessions_user_fetch(user_id, session_id):
                     logging.exception(error)
                     return '', 500
                 else:
-                    shared_key: bytes = SecurityRSA.encrypt(
+                    encrypted_shared_key: bytes = SecurityRSA.encrypt_with_key(
                             data=shared_key, public_key=user_public_key)
 
-                    shared_key = shared_key.decode('utf-8')
+                    encrypted_shared_key = base64.b64encode(encrypted_shared_key)
+                    logging.debug("shared_key: %s", encrypted_shared_key)
 
                     # TODO:
                     gateway_clients: dict = {}
 
-                    user_platforms: dict = sessions_websocket.user_management_api_request_platforms(
-                            headers=response.header,
-                            user_id = user_id)
+                    user_platforms: dict = \
+                            sessions_websocket.user_management_api_request_platforms( 
+                                    request=request_payload, user_id = user_id)
 
                     return jsonify(
                             {
-                                "shared_key": shared_key,
+                                "shared_key": encrypted_shared_key.decode('utf-8'),
                                 "user_platforms": user_platforms,
                                 "gateway_clients": gateway_clients
                                 }), 200

@@ -165,14 +165,15 @@ class Users:
         else:
             return session_id
     
-    def get_public_key(self) -> str:
+    def get_public_key(self, session_id: str) -> str:
         """Gets the user's stored public key.
         """
 
         try:
             cur = self.con.cursor()
-            cur.execute("SELECT public_key FROM sessions WHERE session_id=:session_id", 
-                    {"session_id":session_id})
+            cur.execute(
+                    "SELECT public_key FROM sessions WHERE user_id=:user_id AND session_id=:session_id", 
+                    {"user_id":self.user_id, "session_id":session_id})
         except Exception as error:
             raise error
         else:

@@ -56,6 +56,24 @@ class SecurityRSA:
 
 
         return public_key, private_key
+
+    @staticmethod
+    def encrypt_with_key(data: str, public_key: str) -> bytes:
+        """Encrypt with public key stored in ..public.pem.
+
+        Args:
+            data (str): Base64 plain input.
+            public_key (str): Base64 public key, possibly in PEM format.
+        """
+
+        public_key = PKCS1_OAEP.new(
+                key=RSA.importKey(public_key), 
+                hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+
+        data = bytes(data, 'utf-8')
+        encrypted_text = public_key.encrypt(data)
+
+        return encrypted_text
     
 
     @staticmethod
@@ -67,7 +85,6 @@ class SecurityRSA:
             private_key_filepath (str): path to private key (private.pem) on system.
         """
 
-        logging.debug(data)
         with open(private_key_filepath) as fd:
             private_key = RSA.import_key(fd.read())
 

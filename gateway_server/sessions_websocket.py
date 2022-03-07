@@ -31,17 +31,19 @@ def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
 
     user_management_api_auth_url = __conf['user_management_api']['verification_url'] % \
             (user_id)
+    logging.debug("user_management_api_auth_url: %s", user_management_api_auth_url)
 
-    response = requests.post(
+    request = requests.Session()
+    response = request.post(
             user_management_api_auth_url,
             json={"password":password})
 
     response.raise_for_status()
 
-    return true, response
+    return True, request
 
 
-def user_management_api_request_platforms(headers: dict, user_id: str) -> dict:
+def user_management_api_request_platforms(request: requests.Session, user_id: str) -> dict:
     """Request for the user's stored platforms.
 
     Args:
@@ -56,9 +58,10 @@ def user_management_api_request_platforms(headers: dict, user_id: str) -> dict:
  
     user_management_api_platform_request_url = __conf['user_management_api']['platforms_url'] % \
             (user_id)
-    response = requests.get(
+
+    response = request.get(
             user_management_api_platform_request_url, 
-            headers=headers)
+            json={})
 
     response.raise_for_status()
 

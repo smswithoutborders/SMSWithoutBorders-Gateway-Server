@@ -12,6 +12,7 @@ FILE="requirements.txt"
 if [ ! -z "$VIRTUAL_ENV" ]; then
 	# update requirements docs proceed with commit
 	pip freeze > $FILE
+	git add $FILE
 	echo -e "+ Updated $FILE with pip requirements.\n"
 else
 	echo -e ">> Not in a virtualenv.\n"

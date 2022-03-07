@@ -280,7 +280,10 @@ async def serve_sessions(websocket, path):
         logging.info("session paused requested: %s", client_persistent_key)
 
         __persistent_connections[client_persistent_key].state = '__PAUSE__'
-        await __persistent_connections[client_persistent_key].get_socket().send("201- paused")
+        try:
+            await __persistent_connections[client_persistent_key].get_socket().send("201- paused")
+        except Exception as error:
+            logging.exception(error)
 
 
     elif path.find('v%s/sync/ack' % (__api_version)) > -1:
@@ -296,7 +299,11 @@ async def serve_sessions(websocket, path):
         client_persistent_key = session_id + user_id
         logging.info("session ack requested: %s", client_persistent_key)
 
-        await __persistent_connections[client_persistent_key].get_socket().send("200- ack")
+        try:
+            await __persistent_connections[client_persistent_key].get_socket().send("200- ack")
+        except Exception as error:
+            logging.exception(error)
+
         del __persistent_connections[client_persistent_key]
 
 

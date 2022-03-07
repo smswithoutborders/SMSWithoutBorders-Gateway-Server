@@ -177,7 +177,6 @@ def sessions_public_key_exchange(user_id, session_id):
     """
 
     try:
-        logging.debug(request.data)
         data = json.loads(request.data, strict=False)
     except Exception as error:
         logging.exception(error)
@@ -277,7 +276,6 @@ def sessions_user_fetch(user_id, session_id):
     """
 
     try:
-        logging.debug(request.data)
         data = request.json
     except Exception as error:
         return 'invalid json', 400
@@ -292,18 +290,11 @@ def sessions_user_fetch(user_id, session_id):
             Password is in base64 and encrypted with server's public key
             """
             password = data['password']
-            logging.debug("encrypted password: %r", password)
 
             decrypted_password = SecurityRSA.decrypt(
                     data=password,
                     private_key_filepath=__gateway_confs_private_key_filepath)
             decrypted_password = decrypted_password.decode('utf-8')
-
-            """
-            TODO:
-            REMOVE
-            """
-            logging.debug("decrypted password: %r", decrypted_password)
         except Exception as error:
             logging.exception(error)
             return '', 500
@@ -313,8 +304,13 @@ def sessions_user_fetch(user_id, session_id):
                         sessions_websocket.user_management_api_authenticate_user( 
                                 password=decrypted_password, 
                                 user_id = user_id )
-
+            except Exception as error:
+                # TODO figure out what the issue here
+                return 'failed to authenticate', 401
+            else:
                 logging.debug("Authenticated successfully")
+
+                websocket_message(message='__ACK__', user_id=user_id, session_id=session_id)
 
                 # Authentication details are stored in the cookies, so use them for further request
                 # Shouldn't be stored because they expire after a while
@@ -324,12 +320,10 @@ def sessions_user_fetch(user_id, session_id):
                     shared_key = user.update_shared_key(session_id=session_id)
 
                     user_public_key = user.get_public_key(session_id=session_id)
-                    logging.debug("public key: %s", user_public_key)
                     if len(user_public_key) < 1:
                         return 'invalid session requested', 400
 
                     user_public_key = user_public_key[0][0]
-                    logging.debug("user public key: %s", user_public_key)
                 except Exception as error:
                     logging.exception(error)
                     return '', 500
@@ -352,10 +346,6 @@ def sessions_user_fetch(user_id, session_id):
                                 "user_platforms": user_platforms,
                                 "gateway_clients": gateway_clients
                                 }), 200
-
-            except Exception as error:
-                logging.exception(error)
-
     return '', 500
 
 
@@ -497,6 +487,26 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
                 session_id)
 
         logging.debug("pausing url: %s", websocket_url)
+        ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
+        if not ssl_context == None:
+            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+        else:
+            ws.run_forever()
+
+    elif message == '__ACK__':
+        def socket_message_error(wsapp, error):
+            logging.error(error)
+
+        # ws://localhost:6996/v2/sync/pause/user_id/session_id
+        websocket_url = "%s://%s:%s/v%s/sync/ack/%s/%s" % (
+                websocket_protocol,
+                __gateway_server_confs['websocket']['host'],
+                __gateway_server_confs['websocket']['port'],
+                __api_version_number,
+                user_id,
+                session_id)
+
+        logging.debug("ack url: %s", websocket_url)
         ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
         if not ssl_context == None:
             ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})

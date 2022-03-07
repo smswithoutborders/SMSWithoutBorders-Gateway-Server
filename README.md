@@ -113,3 +113,9 @@ This will require pem files. Copy them into the test/ dir to allow test run
 ```bash
 python -m unittest test/security_rsa.py
 ```
+
+- Testing [Entire Handshake process](test/handshake.py)
+This will require pem files. Copy them into the test/ dir to allow test run
+```bash
+./test/handshake.sh
+```

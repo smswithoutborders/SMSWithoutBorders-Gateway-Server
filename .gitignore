@@ -6,7 +6,5 @@ __pycache__/*
 .idea/*
 *.sw*
 */*.sw*
-*.pem
 security/*.pem
-**.pem
 **/__pycache__/*

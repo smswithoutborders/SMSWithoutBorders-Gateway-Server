@@ -338,7 +338,6 @@ def sessions_user_fetch(user_id, session_id):
                             data=shared_key, public_key=user_public_key)
 
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
-                    logging.debug("shared_key: %s", encrypted_shared_key)
 
                     # TODO:
                     gateway_clients: dict = {}

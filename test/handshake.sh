@@ -1,15 +1,21 @@
 #!/bin/sh
 
-# Usage: ./handshake.sh <public key file (.pem)> <private key file (.pem)> <password>
+# Usage: ./handshake.sh 
+# 	<public key file (.pem)> 
+# 	<private key file (.pem)> 
+# 	<user id file>
+#	<password>
 
 public_key=$(cat $1)
 echo "$public_key"
 
 private_key_filepath=$2
-password=$3
+
+user_id=$(cat $3)
+password=$4
 
 # Performs the handshake and decrypts the shared key data at the end
-curl -s http://localhost:6969/v2/sync/users/a161a060-989d-11ec-8468-5b3dca686254 | \
+curl -s http://localhost:6969/v2/sync/users/$user_id | \
 	xargs -I{} websocat {} | \
 	xargs -I{} curl -s -X POST {} \
 	-d "{\"public_key\":\"$public_key\"}" \

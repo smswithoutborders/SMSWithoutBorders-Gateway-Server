@@ -333,7 +333,7 @@ def sessions_user_fetch(user_id, session_id):
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
                     logging.debug("encrypted_shared_key: %s", encrypted_shared_key)
 
-                    gateway_clients: dict = {}
+                    gateway_clients: list = []
                     user_platforms: dict = \
                             sessions_websocket.user_management_api_request_platforms( 
                                     request=request_payload, user_id = user_id)

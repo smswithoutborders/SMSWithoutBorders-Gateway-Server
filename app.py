@@ -308,9 +308,8 @@ def sessions_user_fetch(user_id, session_id):
                 # TODO figure out what the issue here
                 return 'failed to authenticate', 401
             else:
-                logging.debug("Authenticated successfully")
-
                 websocket_message(message='__ACK__', user_id=user_id, session_id=session_id)
+                logging.debug("Authenticated successfully")
 
                 # Authentication details are stored in the cookies, so use them for further request
                 # Shouldn't be stored because they expire after a while
@@ -332,13 +331,14 @@ def sessions_user_fetch(user_id, session_id):
                             data=shared_key, public_key=user_public_key)
 
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
+                    logging.debug("encrypted_shared_key: %s", encrypted_shared_key)
 
-                    # TODO:
                     gateway_clients: dict = {}
-
                     user_platforms: dict = \
                             sessions_websocket.user_management_api_request_platforms( 
                                     request=request_payload, user_id = user_id)
+                    user_platforms = user_platforms["saved_platforms"]
+                    logging.debug("user_platforms_payload: %s", user_platforms)
 
                     return jsonify(
                             {

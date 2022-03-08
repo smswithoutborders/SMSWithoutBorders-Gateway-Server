@@ -66,6 +66,7 @@ class SecurityRSA:
             public_key (str): Base64 public key, possibly in PEM format.
         """
 
+        logging.debug("user public key: %s", public_key)
         public_key = PKCS1_OAEP.new(
                 key=RSA.importKey(public_key), 
                 hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))

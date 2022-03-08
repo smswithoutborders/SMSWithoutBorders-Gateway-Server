@@ -238,10 +238,14 @@ async def serve_sessions(websocket, path):
                     """
                     break
 
-            await __persistent_connections[client_persistent_key].get_socket().close()
-            del __persistent_connections[client_persistent_key]
+            try:
+                await __persistent_connections[client_persistent_key].get_socket().close()
+                del __persistent_connections[client_persistent_key]
 
-            logging.debug("removed client %s", client_persistent_key)
+                logging.debug("removed client %s", client_persistent_key)
+            except Exception as error:
+                logging.exception(error)
+
 
             try:
                 session_id = update_session(
@@ -299,13 +303,13 @@ async def serve_sessions(websocket, path):
         client_persistent_key = session_id + user_id
         logging.info("session ack requested: %s", client_persistent_key)
 
+        __persistent_connections[client_persistent_key].state = '__ACK__'
         try:
             await __persistent_connections[client_persistent_key].get_socket().send("200- ack")
+            await __persistent_connections[client_persistent_key].get_socket().close()
+            del __persistent_connections[client_persistent_key]
         except Exception as error:
             logging.exception(error)
-
-        del __persistent_connections[client_persistent_key]
-
 
 def construct_websocket_object():
     """Create the start connection url for the socket.

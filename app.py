@@ -337,6 +337,13 @@ def sessions_user_fetch(user_id, session_id):
                     user_platforms: dict = \
                             sessions_websocket.user_management_api_request_platforms( 
                                     request=request_payload, user_id = user_id)
+
+                    for i in range(len(user_platforms['saved_platforms'])):
+                        user_platforms['saved_platforms'][i]["logo"] = \
+                                __gateway_confs['user_management_api']['verification_url'] + \
+                                user_platforms['saved_platforms'][i]["logo"] 
+                    logging.debug(user_platforms)
+
                     user_platforms = user_platforms["saved_platforms"]
                     logging.debug("user_platforms_payload: %s", user_platforms)
 

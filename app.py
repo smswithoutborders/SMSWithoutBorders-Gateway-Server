@@ -340,7 +340,7 @@ def sessions_user_fetch(user_id, session_id):
 
                     for i in range(len(user_platforms['saved_platforms'])):
                         user_platforms['saved_platforms'][i]["logo"] = \
-                                __gateway_server_confs['user_management_api']['verification_url'] \
+                                __gateway_server_confs['user_management_api']['api_url'] \
                                 + user_platforms['saved_platforms'][i]["logo"] 
                     logging.debug(user_platforms)
 

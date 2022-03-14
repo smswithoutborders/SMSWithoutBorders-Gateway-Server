@@ -20,7 +20,7 @@ from security.rsa import SecurityRSA
 
 __api_version_number = 2
 
-__gateway_server_confs = configparser.ConfigParser()
+__gateway_server_confs = configparser.ConfigParser(interpolation=None)
 __gateway_server_confs.read(os.path.join(
     os.path.dirname(__file__), 'gateway_server/confs', 'conf.ini'))
 
@@ -340,8 +340,8 @@ def sessions_user_fetch(user_id, session_id):
 
                     for i in range(len(user_platforms['saved_platforms'])):
                         user_platforms['saved_platforms'][i]["logo"] = \
-                                __gateway_confs['user_management_api']['verification_url'] + \
-                                user_platforms['saved_platforms'][i]["logo"] 
+                                __gateway_server_confs['user_management_api']['verification_url'] \
+                                + user_platforms['saved_platforms'][i]["logo"] 
                     logging.debug(user_platforms)
 
                     user_platforms = user_platforms["saved_platforms"]

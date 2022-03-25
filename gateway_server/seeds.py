@@ -36,7 +36,8 @@ class Seeds(Ledger):
         current_time = time.time()
         logging.debug("Current time: %s", current_time)
 
-        return (LPS + 10) < current_time
+        ping_expiration_duration = 60 * 30 # 30 mins
+        return (LPS + ping_expiration_duration) < current_time
 
 
     @staticmethod

@@ -69,7 +69,6 @@ def seed_pings():
 
 @app.route('/seeds', methods=['GET'])
 def get_seeds():
-    logging.debug('fetching clients')
     try:
         seeds = Seeds.list()
         return jsonify(seeds), 200
@@ -78,10 +77,23 @@ def get_seeds():
 
     return '', 500
 
+@app.route('/seeds/<IMSI>', methods=['GET'])
+def get_seed_IMSI(IMSI):
+    try:
+        seeds = Seeds.list()
+        for seed in seeds:
+            if seed["IMSI"] == IMSI:
+                return seed["MSISDN"], 200
+
+    except Exception as error:
+        logging.exception(error)
+        return '', 500
+
+    return '', 200
+
 
 @app.route('/seeders', methods=['GET'])
 def get_seeders():
-    logging.debug('fetching clients')
     try:
         seeders = []
         seeds = Seeds.list()

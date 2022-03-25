@@ -36,7 +36,6 @@ class Seeds(Ledger):
         current_time = time.time()
         logging.debug("Current time: %s", current_time)
 
-        LPS += 10
         return (LPS + 10) < current_time
 
 
@@ -69,6 +68,12 @@ class Seeds(Ledger):
                 if seed.expired():
                     logging.debug("%s has expired!", MSISDN)
                 else:
+                    LPS = float(seed.find_seed()[0][3])
+                    seeder = {
+                            "IMSI": seeder[0],
+                            "MSISDN": seeder[1],
+                            "seed_type": seeder[2],
+                            "LPS": LPS}
                     active_seeders.append(seeder)
 
             return active_seeders

@@ -52,8 +52,8 @@ python3 app.py
 ```
 
 - Get List of available Nodes
-```/seeds
-```
+`/seeds
+`
 
 For example
 ```bash
@@ -73,8 +73,8 @@ Returns
 ```
 
 - Add Gateway to active Gateways
-```/ping
-```
+`/ping
+`
 
 For example
 ```bash

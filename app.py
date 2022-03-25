@@ -67,13 +67,12 @@ def seed_pings():
     return '', 500
 
 
-@app.route('/clients', methods=['GET'])
+@app.route('/seeds', methods=['GET'])
 def get_clients():
     logging.debug('fetching clients')
     try:
-        list_clients = Ledger().get_list()
-
-        return jsonify(list_clients), 200
+        seeds = Seeds.list()
+        return jsonify(seeds), 200
     except Exception as error:
         logging.exception(error)
 
@@ -581,5 +580,8 @@ if __name__ == "__main__":
     logging.debug("- public key filepath: %s\n- private key filepath: %s", 
             __gateway_confs_public_key_filepath,
             __gateway_confs_private_key_filepath)
+
+    Ledger.make_ledgers()
+    logging.debug("[*] Checked and created ledgers...")
 
     app.run(host=host, port=port, debug=debug, threaded=True )

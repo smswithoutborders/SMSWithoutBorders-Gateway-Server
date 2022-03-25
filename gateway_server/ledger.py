@@ -5,6 +5,9 @@ import logging
 import sqlite3 as database
 
 class Ledger:
+
+    seeders_ledger_filename = os.path.join(
+            os.path.dirname(__file__), '.db/seeders', f"seeds.db")
     
     def __init__(self, IMSI: str, MSISDN: str, seed_type: str = 'seed'):
         """Creates an instance of ledger for the IMSI (node).
@@ -19,10 +22,8 @@ class Ledger:
         if not, create it
         """
         self.database_conn = None
-
         self.seeds_ledger_filename = os.path.join(
                 os.path.dirname(__file__), '.db/nodes', f"{IMSI}.db")
-
         try:
             if not self.__is_ledger_file__(self.seeds_ledger_filename):
                 try:
@@ -31,6 +32,9 @@ class Ledger:
 
                     self.__populate_seed_ledger_file__()
                     logging.info("Populated seed ledger for %s", self.IMSI)
+
+                    self.__populate_seeders_ledger_file__()
+                    logging.info("Populated seeder ledger for %s", self.IMSI)
                 except Exception as error:
                     raise error
             else:
@@ -38,14 +42,15 @@ class Ledger:
         except Exception as error:
             raise error
 
-        self.seeders_ledger_filename = os.path.join(
-                os.path.dirname(__file__), '.db/seeders', f"seeds.db")
 
+    @staticmethod
+    def make_ledgers() -> None:
         try:
-            if not self.__is_ledger_file__(self.seeders_ledger_filename):
+            if not Ledger.__is_ledger_file__(Ledger.seeders_ledger_filename):
                 try:
-                    self.__create_seeders_ledger_file__()
-                    logging.info("Created seeding ledger for %s", self.IMSI)
+                    Ledger.__create_seeders_ledger_file__()
+                    logging.debug("[*] created seeders ledger")
+
                 except Exception as error:
                     raise error
             else:
@@ -53,11 +58,13 @@ class Ledger:
         except Exception as error:
             raise error
 
-    def __is_ledger_file__(self, ledger_filename: str) -> bool:
+
+    @staticmethod
+    def __is_ledger_file__(ledger_filename: str) -> bool:
         """Checks if ledger file exist.
         """
         try:
-            self.database_conn = database.connect(
+            database_conn = database.connect(
                     f"file:{ledger_filename}?mode=rw", uri=True)
         except database.OperationalError as error:
             return False
@@ -66,10 +73,6 @@ class Ledger:
 
         return True
 
-    def is_ledger(self) -> bool:
-        """Checks if ledger file exist.
-        """
-        return self.__is_ledger_file__()
 
     def __create_seeds_ledger_file__(self) -> None:
         """Create ledger file.
@@ -80,10 +83,10 @@ class Ledger:
         try:
             cur.execute( f'''
             CREATE TABLE seed
-            (IMSI text NOT NULL, 
+            (IMSI text PRIMARY KEY NOT NULL, 
             MSISDN text NOT NULL, 
             type text NOT NULL DEFAULT 'seed',
-            LPS text,
+            LPS text DEFAULT NULL,
             date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL) ''')
 
             self.database_conn.commit()
@@ -95,25 +98,38 @@ class Ledger:
 
         cur = self.database_conn.cursor()
         try:
-            cur.execute(f"""INSERT INTO seed VALUES (?, ?, ?)""", 
-                    ({self.IMSI}, {self.MSISDN}, {self.seed_type}))
+            cur.execute("""INSERT INTO seed (IMSI, MSISDN, type) VALUES (?, ?, ?)""", 
+                    (self.IMSI, self.MSISDN, self.seed_type))
             self.database_conn.commit()
         except Exception as error:
             raise error
 
-    def __create_seeders_ledger_file__(self) -> None:
-        """Create ledger file.
-        """
+    def __populate_seeders_ledger_file__(self)->None:
         self.database_conn = database.connect(self.seeders_ledger_filename)
 
         cur = self.database_conn.cursor()
         try:
+            cur.execute("""INSERT INTO seeders (IMSI, MSISDN, type) VALUES (?, ?, ?)""", 
+                    (self.IMSI, self.MSISDN, self.seed_type))
+            self.database_conn.commit()
+        except Exception as error:
+            raise error
+
+    @staticmethod
+    def __create_seeders_ledger_file__() -> None:
+        """Create ledger file.
+        """
+        database_conn = database.connect(Ledger.seeders_ledger_filename)
+
+        cur = database_conn.cursor()
+        try:
             cur.execute( f'''
             CREATE TABLE seeders
-            (MSISDN text PRIMARY KEY, 
-            date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL);
-            ''')
-            self.database_conn.commit()
+            (IMSI text NOT NULL, 
+            MSISDN text NOT NULL, 
+            type text NOT NULL DEFAULT 'seed',
+            date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL) ''')
+            database_conn.commit()
         except Exception as error:
             raise error
 
@@ -146,6 +162,22 @@ class Ledger:
             raise error
         else:
             return cur.fetchall()
+
+
+    @staticmethod
+    def list_seeders() -> list:
+        """Finds the fields
+        """
+        database_conn = database.connect(Ledger.seeders_ledger_filename)
+
+        cur = database_conn.cursor()
+        try:
+            cur.execute('''SELECT * FROM seeders''')
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
+
 
     def update_seed_MSISDN(self, seed_MSISDN: str) -> int:
         """

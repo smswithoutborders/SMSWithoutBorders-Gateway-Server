@@ -68,11 +68,27 @@ def seed_pings():
 
 
 @app.route('/seeds', methods=['GET'])
-def get_clients():
+def get_seeds():
     logging.debug('fetching clients')
     try:
         seeds = Seeds.list()
         return jsonify(seeds), 200
+    except Exception as error:
+        logging.exception(error)
+
+    return '', 500
+
+
+@app.route('/seeders', methods=['GET'])
+def get_seeders():
+    logging.debug('fetching clients')
+    try:
+        seeders = []
+        seeds = Seeds.list()
+        for seed in seeds:
+            if seed["seed_type"] == "seeder":
+                seeders.append(seed)
+        return jsonify(seeders), 200
     except Exception as error:
         logging.exception(error)
 

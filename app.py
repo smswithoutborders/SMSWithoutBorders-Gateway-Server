@@ -16,6 +16,7 @@ from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
 from security.rsa import SecurityRSA
+from gateway_server.seeds import Seeds
 
 
 __api_version_number = 2
@@ -32,10 +33,38 @@ app = Flask(__name__)
 CORS(app)
 
 
-@app.route('/clients/status/<IMSI>', methods=['GET'])
-def get_client_imsi(IMSI):
-    if not IMSI:
-        return 'missing IMSI', 400
+@app.route('/seeds/ping', methods=['POST'])
+def seed_pings():
+    try:
+        data = request.json
+    except Exception as error:
+        return '', 500
+    else:
+        if not "IMSI" in data:
+            return 'missing IMSI', 400
+
+        if not "MSISDN" in data:
+            return 'missing MSISDN', 400
+
+        if not "seed_type" in data:
+            return 'missing seeder state', 400
+
+        seed_IMSI = data['IMSI']
+        seed_MSISDN = data['MSISDN']
+        seed_type = data['seed_type']
+
+        try:
+            seed = Seeds(IMSI=seed_IMSI, MSISDN=seed_MSISDN, seed_type=seed_type)
+
+            LPS = seed.register_ping_request()
+            logging.debug("Registered new ping LPS: %s", LPS)
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
+        else:
+            return LPS, 200
+
+    return '', 500
 
 
 @app.route('/clients', methods=['GET'])
@@ -229,7 +258,10 @@ def sessions_public_key_exchange(user_id, session_id):
     return '', 500
 
 
-@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>' % (__api_version_number), methods=['PUT'])
+@app.route(
+        '/v%s/sync/users/<user_id>/sessions/<session_id>' % 
+        (__api_version_number), methods=['PUT'])
+
 def sessions_user_update(user_id, session_id):
     """Updates the current session for user.
     Uses users ID and session ID to update current user's session on the users record DB.
@@ -254,7 +286,10 @@ def sessions_user_update(user_id, session_id):
     return '', 500
 
 
-@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>' % (__api_version_number), methods=['POST'])
+@app.route(
+        '/v%s/sync/users/<user_id>/sessions/<session_id>' % 
+        (__api_version_number), methods=['POST'])
+
 def sessions_user_fetch(user_id, session_id):
     """Authenticates and fetches information to populate the usser's app.
     Authenticating users happen at the BE user management API which can be configured in the config routes.

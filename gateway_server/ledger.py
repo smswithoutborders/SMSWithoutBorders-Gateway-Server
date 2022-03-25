@@ -1,164 +1,210 @@
 #!/usr/bin/env python3
 
 import os
-import sqlite3
 import logging
-import traceback
+import sqlite3 as database
 
 class Ledger:
-    def __init__(self, MSISDN:str=None, IMSI:str=None) -> None:
-        self.con = None
-        self.MSISDN = MSISDN
-        self.IMSI = IMSI
-
-        self.db_client_filepath = os.path.join(
-                os.path.dirname(__file__), '.db', 'ledger.db')
-
-        try:
-            db_exist = self.__is_database__()
-        except Exception as error:
-            raise error
-
-        if not db_exist:
-            try:
-                ''' options-
-                1. create
-                '''
-                self.__create_db__()
-                logging.debug('created db file')
-            except Exception as error:
-                raise error
-
-            try:
-                self.__create_db_tables__()
-                logging.debug('tables created in db')
-
-            except sqlite3.Warning as error:
-                logging.warning(error)
-
-            except Exception as error:
-                raise error
-        else:
-            logging.debug('db file exist')
-
-    def __create_db__(self):
-        try:
-            self.con = sqlite3.connect(self.db_client_filepath)
-        except Exception as error:
-            raise error
     
-    def __create_db_tables__(self):
+    def __init__(self, IMSI: str, MSISDN: str, seed_type: str = 'seed'):
+        """Creates an instance of ledger for the IMSI (node).
+        In case the ledger does not already exist, it is created.
+        """
+        self.IMSI = IMSI
+        self.MSISDN = MSISDN
+        self.seed_type = seed_type
+
+        """
+        Check if ledger file exist,
+        if not, create it
+        """
+        self.database_conn = None
+
+        self.seeds_ledger_filename = os.path.join(
+                os.path.dirname(__file__), '.db/nodes', f"{IMSI}.db")
+
         try:
-            cur = self.con.cursor()
-            cur.execute('''CREATE TABLE IF NOT EXIST clients
-            (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            MSISDN TEXT NOT NULL UNIQUE,
-            IMSI TEXT NOT NULL UNIQUE,
-            update_platform TEXT NOT NULL,
-            update_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL);''')
-            
-            self.con.commit()
+            if not self.__is_ledger_file__(self.seeds_ledger_filename):
+                try:
+                    self.__create_seeds_ledger_file__()
+                    logging.info("Created seed's ledger for %s", self.IMSI)
 
-        except sqlite3.Warning as error:
-            # raise error
-            logging.warning(error)
-
+                    self.__populate_seed_ledger_file__()
+                    logging.info("Populated seed ledger for %s", self.IMSI)
+                except Exception as error:
+                    raise error
+            else:
+                logging.debug("Ledger exist for %s", self.IMSI)
         except Exception as error:
             raise error
 
-    def __is_database__(self):
-        try:
-            self.con = sqlite3.connect(
-                    f"file:{self.db_client_filepath}?mode=rw",
-                    uri=True)
+        self.seeders_ledger_filename = os.path.join(
+                os.path.dirname(__file__), '.db/seeders', f"seeds.db")
 
-        except sqlite3.OperationalError as error:
-            # raise error
+        try:
+            if not self.__is_ledger_file__(self.seeders_ledger_filename):
+                try:
+                    self.__create_seeders_ledger_file__()
+                    logging.info("Created seeding ledger for %s", self.IMSI)
+                except Exception as error:
+                    raise error
+            else:
+                logging.debug("Ledger exist for seeds")
+        except Exception as error:
+            raise error
+
+    def __is_ledger_file__(self, ledger_filename: str) -> bool:
+        """Checks if ledger file exist.
+        """
+        try:
+            self.database_conn = database.connect(
+                    f"file:{ledger_filename}?mode=rw", uri=True)
+        except database.OperationalError as error:
             return False
         except Exception as error:
             raise error
 
         return True
 
-    def __read_clients_db__(self) -> list:
-        cur = self.con.cursor()
-        clients = list()
+    def is_ledger(self) -> bool:
+        """Checks if ledger file exist.
+        """
+        return self.__is_ledger_file__()
 
+    def __create_seeds_ledger_file__(self) -> None:
+        """Create ledger file.
+        """
+        self.database_conn = database.connect(self.seeds_ledger_filename)
+
+        cur = self.database_conn.cursor()
         try:
-            for row in cur.execute(
-                    'SELECT * FROM clients'):
+            cur.execute( f'''
+            CREATE TABLE seed
+            (IMSI text NOT NULL, 
+            MSISDN text NOT NULL, 
+            type text NOT NULL DEFAULT 'seed',
+            LPS text,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL) ''')
 
-                ''' database structure --- 
-
-                + id:""
-                + MSISDN:""
-                + IMSI:""
-                + update_platform:""
-                + update_timestamp:""
-                '''
-
-                client = {}
-                client['id'] = row[0]
-                client['MSISDN'] = row[1]
-                client['IMSI'] = row[2]
-                client['update_platform'] = row[3]
-                client['update_timestamp'] = row[4]
-
-                clients.append(client)
-
-        except sqlite3.Warning as error:
-            logging.warning(error)
-
+            self.database_conn.commit()
         except Exception as error:
             raise error
+    
+    def __populate_seed_ledger_file__(self)->None:
+        self.database_conn = database.connect(self.seeds_ledger_filename)
 
-        return clients
-
-    def get_list(self):
+        cur = self.database_conn.cursor()
         try:
-            clients = self.__read_clients_db__()
+            cur.execute(f"""INSERT INTO seed VALUES (?, ?, ?)""", 
+                    ({self.IMSI}, {self.MSISDN}, {self.seed_type}))
+            self.database_conn.commit()
         except Exception as error:
             raise error
 
-        return clients
+    def __create_seeders_ledger_file__(self) -> None:
+        """Create ledger file.
+        """
+        self.database_conn = database.connect(self.seeders_ledger_filename)
 
-    def create(self, data:dict) -> None:
-        cur = self.con.cursor()
-        data_values = (
-                data['MSISDN'],
-                data['IMSI'],
-                data['update_platform'])
-
-        try: 
-            cur.execute("INSERT INTO clients( MSISDN, IMSI, update_platform) VALUES(?,?,?)", data_values)
-
-            self.con.commit()
-
-        except sqlite3.Warning as error:
-            logging.warning(error)
-
-        except Exception as error:
-            raise error
-
-    def exist(self, data:dict) -> bool:
-        cur = self.con.cursor()
-        
+        cur = self.database_conn.cursor()
         try:
-            rows = cur.execute(
-                    "SELECT 1 FROM clients WHERE IMSI=:IMSI and MSISDN=:MSISDN",
-                    {"IMSI":data['IMSI'], "MSISDN":data['MSISDN']}).fetchall()
-
-            return True if rows[0][0] == 1 else False
-
-        except sqlite3.Warning as error:
-            logging.exception(error)
-
+            cur.execute( f'''
+            CREATE TABLE seeders
+            (MSISDN text PRIMARY KEY, 
+            date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL);
+            ''')
+            self.database_conn.commit()
         except Exception as error:
             raise error
 
-    def __del__(self):
-        self.con.close()
+    
+    def find_seed(self) -> list:
+        """Finds the fields
+        """
+        self.database_conn = database.connect(self.seeds_ledger_filename)
 
-if __name__ == "__main__":
-    logging.basicConfig(level='DEBUG')
-    client = Clients()
+        cur = self.database_conn.cursor()
+        try:
+            """Because there will always be just one seed. 
+            More than one seed and there's a problem"""
+            cur.execute('''SELECT * FROM seed WHERE MSISDN IS NOT NULL''')
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
+
+    def find_seeder(self) -> list:
+        """Finds the fields
+        """
+        self.database_conn = database.connect(self.seeders_ledger_filename)
+
+        cur = self.database_conn.cursor()
+        try:
+            cur.execute('''SELECT * FROM seeders WHERE MSISDN=:MSISDN''', 
+                    {"MSISDN":self.MSISDN})
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
+
+    def update_seed_MSISDN(self, seed_MSISDN: str) -> int:
+        """
+        """
+
+        self.database_conn = database.connect(self.seeds_ledger_filename)
+
+        cur = self.database_conn.cursor()
+        try:
+            cur.execute('''UPDATE seed SET MSISDN=:MSISDN WHERE IMSI=:IMSI''', 
+                    {"MSISDN":seed_MSISDN, "IMSI":self.IMSI})
+            self.database_conn.commit()
+        except Exception as error:
+            raise error
+        else:
+            return cur.rowcount
+
+    def update_seeds_seeder_MSISDN(self, seeder_MSISDN: str):
+        """
+        """
+
+        self.database_conn = database.connect(self.seeds_ledger_filename)
+
+        cur = self.database_conn.cursor()
+        try:
+            cur.execute('''UPDATE seed SET seeder_MSISDN=:seeder_MSISDN''', {"seeder_MSISDN":seeder_MSISDN})
+            self.database_conn.commit()
+        except Exception as error:
+            raise error
+
+
+    @staticmethod
+    def add_seeders(seeders: list):
+        """
+        """
+
+        self.database_conn = database.connect(self.seeders_ledger_filename)
+
+        cur = self.database_conn.cursor()
+        try:
+            cur.executemany('''INSERT INTO seeders values (?)''', 
+                    [("MSISDN", seeder.MSISDN) for seeder in seeders])
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
+
+    def update_seed_ping(self, LPS: str) -> int:
+        """Updates the ledger with ping request as they come in.
+
+        """
+        self.database_conn = database.connect(self.seeds_ledger_filename)
+
+        cur = self.database_conn.cursor()
+        try:
+            cur.execute('''UPDATE seed SET LPS=:LPS WHERE IMSI=:IMSI''', 
+                    {"LPS":LPS, "IMSI":self.IMSI})
+            self.database_conn.commit()
+        except Exception as error:
+            raise error
+        else:
+            return cur.rowcount

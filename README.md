@@ -40,16 +40,51 @@ cp confs/example.conf.ini confs/conf.ini
 cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 ```
 
-#### How to-s
+#### Usage
 <a name="synchronization" />
 
-#### Start Gateway API
+#### Gateway API
 
 ##### Manually start Gateway API
 ```bash
 . venv/bin/activate
-python3 api.py
+python3 app.py
 ```
+
+- Get List of available Nodes
+```/seeds
+```
+
+For example
+```bash
+curl localhost:6969/seeds -H "Content-Type: application/json"
+```
+
+Returns
+```json
+[
+  {
+    "IMSI": "sample_IMSI", 
+    "LPS": 1648206122.81431, 
+    "MSISDN": "sample_MSISDN", 
+    "seed_type": "seed"
+  }
+]
+```
+
+- Add Gateway to active Gateways
+```/ping
+```
+
+For example
+```bash
+curl -X POST \
+	localhost:6969/seeds/ping \
+	-d '{"IMSI":"sample_IMSI", "MSISDN":"sample_MSISDN", "seed_type":"seed"}' \
+	-H "Content-Type: application/json"
+```
+
+Returns the LPS of current session. LPS = Last ping session
 
 #### Synchronization
 Synchronization is required to enable the users acquire security keys, platforms and available gateways.

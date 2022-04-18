@@ -3,7 +3,7 @@
 import time
 import logging
 from gateway_server.ledger import Ledger
-from gateway_server import telecom
+from helpers import telecom
 
 class Seeds(Ledger):
     def __init__(self, IMSI: str, MSISDN: str, seed_type='seed'):

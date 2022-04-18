@@ -3,6 +3,7 @@
 import time
 import logging
 from gateway_server.ledger import Ledger
+from gateway_server import telecom
 
 class Seeds(Ledger):
     def __init__(self, IMSI: str, MSISDN: str, seed_type='seed'):
@@ -69,13 +70,18 @@ class Seeds(Ledger):
                 if seed.expired():
                     logging.debug("%s has expired!", MSISDN)
                 else:
-                    LPS = float(seed.find_seed()[0][3])
-                    seeder = {
-                            "IMSI": seeder[0],
-                            "MSISDN": seeder[1],
-                            "seed_type": seeder[2],
-                            "LPS": LPS}
-                    active_seeders.append(seeder)
+                    try:
+                        MSISDN_country = telecom.get_phonenumber_country(MSISDN=MSISDN)
+                        LPS = float(seed.find_seed()[0][3])
+                        seeder = {
+                                "IMSI": seeder[0],
+                                "MSISDN": seeder[1],
+                                "seed_type": seeder[2],
+                                "country": MSISDN_country,
+                                "LPS": LPS}
+                        active_seeders.append(seeder)
+                    except Exception as error:
+                        logging.exception(error)
 
             return active_seeders
 

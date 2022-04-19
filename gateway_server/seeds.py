@@ -49,7 +49,7 @@ class Seeds(Ledger):
         try:
             """
             """
-            seeders = Ledger.list_seeders()
+            seeds = Ledger.list_seeds()
         except Exception as error:
             raise error
         else:
@@ -60,12 +60,12 @@ class Seeds(Ledger):
             update_datetime
             """
 
-            active_seeders = []
-            logging.error("Seeders: %s", seeders)
-            for seeder in seeders:
-                IMSI = seeder[0]
-                MSISDN = seeder[1]
-                seed_type = seeder[2]
+            active_seeds = []
+            logging.debug("Seeds: %s", seeds)
+            for seed in seeds:
+                IMSI = seed[0][0]
+                MSISDN = seed[0][1]
+                seed_type = seed[0][2]
                 seed = Seeds(IMSI=IMSI, MSISDN=MSISDN, seed_type=seed_type)
 
                 if seed.expired():
@@ -75,15 +75,15 @@ class Seeds(Ledger):
                         logging.error("MSISDN: %s", MSISDN)
                         MSISDN_country = telecom.get_phonenumber_country(MSISDN=MSISDN)
                         LPS = float(seed.find_seed()[0][3])
-                        seeder = {
-                                "IMSI": seeder[0],
-                                "MSISDN": seeder[1],
-                                "seed_type": seeder[2],
+                        seed = {
+                                "IMSI": IMSI,
+                                "MSISDN": MSISDN,
+                                "seed_type": seed_type,
                                 "country": MSISDN_country,
                                 "LPS": LPS}
-                        active_seeders.append(seeder)
+                        active_seeds.append(seed)
                     except Exception as error:
                         logging.exception(error)
 
-            return active_seeders
+            return active_seeds
 

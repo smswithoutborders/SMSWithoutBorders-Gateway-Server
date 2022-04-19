@@ -8,6 +8,9 @@ class Ledger:
 
     seeders_ledger_filename = os.path.join(
             os.path.dirname(__file__), '.db/seeders', f"seeds.db")
+
+    seeds_ledger_path = os.path.join(
+            os.path.dirname(__file__), '.db/seeds')
     
     def __init__(self, IMSI: str, MSISDN: str, seed_type: str = 'seed'):
         """Creates an instance of ledger for the IMSI (node).
@@ -22,8 +25,7 @@ class Ledger:
         if not, create it
         """
         self.database_conn = None
-        self.seeds_ledger_filename = os.path.join(
-                os.path.dirname(__file__), '.db/nodes', f"{IMSI}.db")
+        self.seeds_ledger_filename = "%s/%s" % (Ledger.seeds_ledger_path, f"{IMSI}.db")
         try:
             if not self.__is_ledger_file__(self.seeds_ledger_filename):
                 try:
@@ -33,6 +35,7 @@ class Ledger:
                     self.__populate_seed_ledger_file__()
                     logging.info("Populated seed ledger for %s", self.IMSI)
 
+                    # TODO if is a seeder type
                     self.__populate_seeders_ledger_file__()
                     logging.info("Populated seeder ledger for %s", self.IMSI)
                 except Exception as error:
@@ -82,7 +85,7 @@ class Ledger:
         cur = self.database_conn.cursor()
         try:
             cur.execute( f'''
-            CREATE TABLE seed
+            CREATE TABLE seeds
             (IMSI text PRIMARY KEY NOT NULL, 
             MSISDN text NOT NULL, 
             type text NOT NULL DEFAULT 'seed',
@@ -98,7 +101,7 @@ class Ledger:
 
         cur = self.database_conn.cursor()
         try:
-            cur.execute("""INSERT INTO seed (IMSI, MSISDN, type) VALUES (?, ?, ?)""", 
+            cur.execute("""INSERT INTO seeds (IMSI, MSISDN, type) VALUES (?, ?, ?)""", 
                     (self.IMSI, self.MSISDN, self.seed_type))
             self.database_conn.commit()
         except Exception as error:
@@ -143,7 +146,7 @@ class Ledger:
         try:
             """Because there will always be just one seed. 
             More than one seed and there's a problem"""
-            cur.execute('''SELECT * FROM seed WHERE MSISDN IS NOT NULL''')
+            cur.execute('''SELECT * FROM seeds WHERE MSISDN IS NOT NULL''')
         except Exception as error:
             raise error
         else:
@@ -178,6 +181,29 @@ class Ledger:
         else:
             return cur.fetchall()
 
+    @staticmethod
+    def list_seeds() -> list:
+        """Find all seed files
+        """
+        seeds = []
+        for root, dirs, files in os.walk(Ledger.seeds_ledger_path):
+            for file in files:
+                if not file.endswith(".db"):
+                    continue
+                db_filepath = "%s/%s" % (Ledger.seeds_ledger_path, file)
+                logging.debug("db_filepath: %s", db_filepath)
+                database_conn = database.connect(db_filepath)
+
+                cur = database_conn.cursor()
+                try:
+                    cur.execute('''SELECT * FROM seeds''')
+                except Exception as error:
+                    logging.exception(error)
+                else:
+                    seeds.append(cur.fetchall())
+
+        return seeds
+
 
     def update_seed_MSISDN(self, seed_MSISDN: str) -> int:
         """
@@ -187,7 +213,7 @@ class Ledger:
 
         cur = self.database_conn.cursor()
         try:
-            cur.execute('''UPDATE seed SET MSISDN=:MSISDN WHERE IMSI=:IMSI''', 
+            cur.execute('''UPDATE seeds SET MSISDN=:MSISDN WHERE IMSI=:IMSI''', 
                     {"MSISDN":seed_MSISDN, "IMSI":self.IMSI})
             self.database_conn.commit()
         except Exception as error:
@@ -203,7 +229,7 @@ class Ledger:
 
         cur = self.database_conn.cursor()
         try:
-            cur.execute('''UPDATE seed SET seeder_MSISDN=:seeder_MSISDN''', {"seeder_MSISDN":seeder_MSISDN})
+            cur.execute('''UPDATE seeds SET seeder_MSISDN=:seeder_MSISDN''', {"seeder_MSISDN":seeder_MSISDN})
             self.database_conn.commit()
         except Exception as error:
             raise error
@@ -231,7 +257,7 @@ class Ledger:
 
         cur = self.database_conn.cursor()
         try:
-            cur.execute('''UPDATE seed SET LPS=:LPS WHERE IMSI=:IMSI''', 
+            cur.execute('''UPDATE seeds SET LPS=:LPS WHERE IMSI=:IMSI''', 
                     {"LPS":LPS, "IMSI":self.IMSI})
             self.database_conn.commit()
         except Exception as error:

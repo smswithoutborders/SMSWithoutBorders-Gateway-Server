@@ -19,6 +19,7 @@ from security.rsa import SecurityRSA
 from gateway_server.seeds import Seeds
 
 
+logging.basicConfig(level='DEBUG')
 __api_version_number = 2
 
 __gateway_server_confs = configparser.ConfigParser(interpolation=None)
@@ -31,6 +32,8 @@ __gateway_confs.read(os.path.join(
 
 app = Flask(__name__)
 CORS(app)
+
+
 
 
 @app.route('/seeds/ping', methods=['POST'])
@@ -483,7 +486,7 @@ def create_clients(data: dict) -> None:
 
 
 def generate_keypair(private_key_filepath: str, public_key_filepath: str) -> tuple:
-    """Generates the main keypair values for Instance of Gateway server
+    """Generates the main keypair values for Instance of Gateway server.
     """
     # securityRSA = SecurityRSA()
     public_key, private_key = SecurityRSA.generate_keypair_write(
@@ -527,7 +530,8 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
             os.path.exists(websocket_ssl_key_filepath)):
 
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=websocket_ssl_crt_filepath, keyfile=websocket_ssl_key_filepath)
+        ssl_context.load_cert_chain(
+                certfile=websocket_ssl_crt_filepath, keyfile=websocket_ssl_key_filepath)
         websocket_protocol = "wss"
 
     '''
@@ -585,31 +589,32 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
     else:
         logging.error("Unknown socket message %s", message)
 
+
+__gateway_confs_public_key_filepath = __gateway_confs['security']['public_key_filepath']
+__gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
+
+if not check_has_keypair(
+        __gateway_confs_private_key_filepath,
+        __gateway_confs_public_key_filepath):
+
+    public_key, private_key = generate_keypair(
+            __gateway_confs_private_key_filepath, 
+            __gateway_confs_public_key_filepath)
+    logging.debug("Generated public key: %s", public_key)
+    logging.debug("Generated private key: %s", private_key)
+
+logging.debug("- public key filepath: %s\n- private key filepath: %s", 
+        __gateway_confs_public_key_filepath,
+        __gateway_confs_private_key_filepath)
+
+Ledger.make_ledgers()
+logging.debug("[*] Checked and created ledgers...")
+
 if __name__ == "__main__":
-    logging.basicConfig(level='DEBUG')
 
     debug = bool(__gateway_confs['api']['debug'])
     host = __gateway_confs['api']['host']
     port = int(__gateway_confs['api']['port'])
 
-    __gateway_confs_public_key_filepath = __gateway_confs['security']['public_key_filepath']
-    __gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
-
-    if not check_has_keypair(
-            __gateway_confs_private_key_filepath,
-            __gateway_confs_public_key_filepath):
-
-        public_key, private_key = generate_keypair(
-                __gateway_confs_private_key_filepath, 
-                __gateway_confs_public_key_filepath)
-        logging.debug("Generated public key: %s", public_key)
-        logging.debug("Generated private key: %s", private_key)
-
-    logging.debug("- public key filepath: %s\n- private key filepath: %s", 
-            __gateway_confs_public_key_filepath,
-            __gateway_confs_private_key_filepath)
-
-    Ledger.make_ledgers()
-    logging.debug("[*] Checked and created ledgers...")
 
     app.run(host=host, port=port, debug=debug, threaded=True )

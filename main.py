@@ -34,8 +34,6 @@ app = Flask(__name__)
 CORS(app)
 
 
-
-
 @app.route('/seeds/ping', methods=['POST'])
 def seed_pings():
     try:

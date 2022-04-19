@@ -61,6 +61,7 @@ class Seeds(Ledger):
             """
 
             active_seeders = []
+            logging.error("Seeders: %s", seeders)
             for seeder in seeders:
                 IMSI = seeder[0]
                 MSISDN = seeder[1]
@@ -71,6 +72,7 @@ class Seeds(Ledger):
                     logging.debug("%s has expired!", MSISDN)
                 else:
                     try:
+                        logging.error("MSISDN: %s", MSISDN)
                         MSISDN_country = telecom.get_phonenumber_country(MSISDN=MSISDN)
                         LPS = float(seed.find_seed()[0][3])
                         seeder = {

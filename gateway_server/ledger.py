@@ -222,8 +222,6 @@ class Ledger:
                     [("MSISDN", seeder.MSISDN) for seeder in seeders])
         except Exception as error:
             raise error
-        else:
-            return cur.fetchall()
 
     def update_seed_ping(self, LPS: str) -> int:
         """Updates the ledger with ping request as they come in.

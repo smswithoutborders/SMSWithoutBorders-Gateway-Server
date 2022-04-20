@@ -31,8 +31,12 @@ __gateway_confs.read(os.path.join(
     os.path.dirname(__file__), 'confs', 'conf.ini'))
 
 app = Flask(__name__)
-CORS(app)
-
+# CORS(app)
+CORS(
+    app,
+    origins="*",
+    supports_credentials=True,
+)
 
 @app.route('/seeds/ping', methods=['POST'])
 def seed_pings():

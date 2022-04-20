@@ -203,6 +203,7 @@ def sessions_start(user_id):
                     os.path.exists(websocket_ssl_crt_filepath) and 
                     os.path.exists(websocket_ssl_key_filepath)):
                 websocket_protocol = "wss"
+                gateway_server_websocket_url = __gateway_server_confs['websocket_ssl']['host']
                         
 
             return "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 

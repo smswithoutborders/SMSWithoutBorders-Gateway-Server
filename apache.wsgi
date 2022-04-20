@@ -1,6 +1,10 @@
 import sys, os, logging
+from inspect import getsourcefile
+from os.path import abspath
+
 sys.stdout = sys.stderr
 logging.basicConfig(stream=sys.stderr)
-sys.path.insert(0, '/var/www/SMSWithoutBorders-Gateway-Server')
+dir_path = os.path.dirname(abspath(getsourcefile(lambda:0)))
+sys.path.insert(0, dir_path)
 
 from main import app as application

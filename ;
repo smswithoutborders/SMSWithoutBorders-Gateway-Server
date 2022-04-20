@@ -3,7 +3,8 @@ public_key_filepath=security/public.pem
 private_key_filepath=security/private.pem
 
 [api]
-host=localhost
+host=
+calhost
 port=6969
 debug=True
 

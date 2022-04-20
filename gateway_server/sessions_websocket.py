@@ -319,7 +319,6 @@ def construct_websocket_object():
     logging.debug("constructing connection websocket object")
     server_ip = __conf['websocket']['host']
     server_port = __conf['websocket']['port']
-    logging.debug("server %s -> port %s", server_ip, server_port)
 
     ssl_crt_filepath = __conf['websocket_ssl']['crt']
     ssl_key_filepath = __conf['websocket_ssl']['key']
@@ -335,10 +334,14 @@ def construct_websocket_object():
         ssl_context.load_cert_chain(certfile=ssl_crt_filepath, 
                 keyfile=ssl_key_filepath)
 
+        server_ip = __conf['websocket_ssl']['host']
+        logging.debug("server %s -> port %s", server_ip, server_port)
+
         return websockets.serve(serve_sessions, server_ip, server_port, ssl=ssl_context)
 
     else:
         logging.debug("websocket going WS")
+        logging.debug("server %s -> port %s", server_ip, server_port)
         return websockets.serve(serve_sessions, server_ip, server_port)
 
 

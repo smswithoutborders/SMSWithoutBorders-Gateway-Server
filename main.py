@@ -11,6 +11,7 @@ import configparser
 import logging
 import json
 import websocket
+import ssl
 
 from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
@@ -532,9 +533,11 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
             os.path.exists(websocket_ssl_crt_filepath) and 
             os.path.exists(websocket_ssl_key_filepath)):
 
+        """
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ssl_context.load_cert_chain(
                 certfile=websocket_ssl_crt_filepath, keyfile=websocket_ssl_key_filepath)
+        """
         websocket_protocol = "wss"
 
     '''
@@ -564,10 +567,13 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
 
         logging.debug("pausing url: %s", websocket_url)
         ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
+        """
         if not ssl_context == None:
             ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
         else:
             ws.run_forever()
+        """
+        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
     elif message == '__ACK__':
         def socket_message_error(wsapp, error):

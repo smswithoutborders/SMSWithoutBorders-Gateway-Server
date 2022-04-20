@@ -327,7 +327,7 @@ def construct_websocket_object():
 
     if(
             os.path.exists(ssl_crt_filepath) and 
-            os.path.exists(ssl_key_path) and 
+            os.path.exists(ssl_key_filepath) and 
             os.path.exists(ssl_pem_filepath)):
 
         logging.debug("websocket going secured with WSS")

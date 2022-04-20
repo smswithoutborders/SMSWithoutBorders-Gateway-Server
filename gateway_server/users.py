@@ -52,7 +52,7 @@ class Users:
     def __is_database__(self):
         try:
             self.con = sqlite3.connect(
-                    f"file:{self.user_record_filename}?mode=rw",
+                    f"file:{self.user_record_filepath}?mode=rw",
                     uri=True)
 
         except sqlite3.OperationalError as error:

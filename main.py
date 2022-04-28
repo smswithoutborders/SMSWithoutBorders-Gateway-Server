@@ -9,10 +9,10 @@ from flask_cors import CORS
 import base64
 import os
 import configparser
-import logging
 import json
 import websocket
 import ssl
+import logging
 
 from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
@@ -63,7 +63,7 @@ def seed_pings():
             seed = Seeds(IMSI=seed_IMSI, MSISDN=seed_MSISDN, seed_type=seed_type)
 
             LPS = seed.register_ping_request()
-            logging.debug("Registered new ping LPS: %s", LPS)
+            app.logger.debug("Registered new ping LPS: %s", LPS)
         except Exception as error:
             logging.exception(error)
             return '', 500
@@ -116,7 +116,7 @@ def get_seeders():
 def publish_record(Body: str, From: str) -> bool:
     try:
         data = json.loads(b64decode(Body))
-        logging.debug("%s", data)
+        app.logger.debug("%s", data)
 
     except Exception as error:
         raise error
@@ -396,17 +396,18 @@ def sms_incoming(platform):
 
     if not platform:
         return 'no platform provided', 500
-    logging.debug('incoming sms for platform %s', platform)
+    app.logger.debug('incoming sms for platform %s', platform)
 
     if platform == 'twilio':
-
+        """Receives Form Data.
+        """
         From = request.values.get('From', None)
         To = request.values.get('To', None)
         FromCountry = request.values.get('FromCountry', None)
         NumSegments = request.values.get('NumSegments', None)
         Body = request.values.get('Body', None)
 
-        logging.debug('\nFrom: %s\nTo: %s\nFrom Country: %s\nBody: %s',
+        app.logger.debug('\nFrom: %s\nTo: %s\nFrom Country: %s\nBody: %s',
                       From, To, FromCountry, Body)
 
         try:
@@ -418,18 +419,24 @@ def sms_incoming(platform):
             return '', 500
 
     if platform == 'gateway-client':
+        """Receives JSON Data.
+        """
         try:
-            From = request.values.get('From', None)
-            Body = request.values.get('Body', None)
+            data = json.loads(request.data)
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
+        else:
+            Body = data['text']
+            MSISDN = data['MSISDN']
 
-            logging.debug('\nFrom: %s\nBody: %s', From, Body)
-
+            app.logger.debug('\n+ MSISDN: %s\n+ Body: %s', MSISDN, Body)
+            """
             if publish_record(Body=Body, From=From):
                 return '', 200
             else:
                 return '', 400
-        except Exception as error:
-            return '', 500
+            """
 
     else:
         return 'unknown platform requested', 400

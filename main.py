@@ -5,6 +5,7 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
 import base64
 import os
 import configparser
@@ -16,23 +17,22 @@ import ssl
 from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
 from gateway_server.users import Users
-from security.rsa import SecurityRSA
+from gateway_server.security.rsa import SecurityRSA
 from gateway_server.seeds import Seeds
+import gateway_server.main as gateway_server
 
 
 logging.basicConfig(level='DEBUG')
 __api_version_number = 2
 
-__gateway_server_confs = configparser.ConfigParser(interpolation=None)
-__gateway_server_confs.read(os.path.join(
-    os.path.dirname(__file__), 'gateway_server/confs', 'conf.ini'))
-
 __gateway_confs = configparser.ConfigParser()
 __gateway_confs.read(os.path.join(
     os.path.dirname(__file__), 'confs', 'conf.ini'))
 
+user_management_api = __gateway_confs['user_management_api']['api_url']
+
 app = Flask(__name__)
-# CORS(app)
+# TODO Add origins to config file
 CORS(
     app,
     origins="*",
@@ -113,33 +113,6 @@ def get_seeders():
     return '', 500
 
 
-"""
-@app.route('/clients/status/<IMSI>', methods=['GET'])
-def get_clients(IMSI):
-    logging.debug('beginning clients handshake')
-
-    try:
-        client = Clients(number=data['number'], 
-                sim_imei=data['sim_imei'])
-    except Exception as error:
-        # raise error
-        logging.exception(error)
-    else:
-        try:
-            logging.debug("cheking if client exist...")
-            if client.exist():
-                # return jsonify({"route_path":route_path}), 200
-                return 'exist'
-
-            else:
-                return 'not exist'
-        except Exception as error:
-            logging.exception(error)
-
-    return '', 500
-"""
-
-
 def publish_record(Body: str, From: str) -> bool:
     try:
         data = json.loads(b64decode(Body))
@@ -195,25 +168,19 @@ def sessions_start(user_id):
 
     else:
         try:
-            gateway_server_websocket_url = __gateway_server_confs['websocket']['host']
-            gateway_server_websocket_port = __gateway_server_confs['websocket']['port']
             session_id = user.start_new_session()
 
             # ws://localhost/v2/sync/init/1s1s/sss
-            websocket_ssl_crt_filepath = __gateway_server_confs['websocket_ssl']['crt']
-            websocket_ssl_key_filepath = __gateway_server_confs['websocket_ssl']['key']
-
             websocket_protocol = "ws"
             if (
-                    os.path.exists(websocket_ssl_crt_filepath) and 
-                    os.path.exists(websocket_ssl_key_filepath)):
+                    os.path.exists(gateway_server.websocket_ssl_crt_filepath) and 
+                    os.path.exists(gateway_server.websocket_ssl_key_filepath)):
                 websocket_protocol = "wss"
-                gateway_server_websocket_url = __gateway_server_confs['websocket_ssl']['host']
+                gateway_server.websocket_url = gateway_server.websocket_ssl_url
                         
-
             return "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
-                    gateway_server_websocket_url,
-                    gateway_server_websocket_port, 
+                    gateway_server.websocket_url,
+                    gateway_server.websocket_port, 
                     __api_version_number, 
                     user_id, session_id), 200
 
@@ -223,7 +190,8 @@ def sessions_start(user_id):
     return '', 500
 
 
-@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/handshake' % (__api_version_number), methods=['POST'])
+@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/handshake' % 
+        (__api_version_number), methods=['POST'])
 def sessions_public_key_exchange(user_id, session_id):
     """Generates a shared for the user attached to this session.
     Args:
@@ -248,16 +216,13 @@ def sessions_public_key_exchange(user_id, session_id):
         if not 'public_key' in data:
             return 'missing public key', 400
 
-        websocket_message(message='__PAUSE__', 
+        gateway_server.websocket_message(message='__PAUSE__', 
                 user_id = user_id, session_id = session_id)
 
         user_public_key = data['public_key']
         # TODO: validate is valid public key
 
-        public_key_filepath = __gateway_confs['security']['public_key_filepath']
-        private_key_filepath = __gateway_confs['security']['private_key_filepath']
-
-        with open(public_key_filepath, 'r') as public_key_fd:
+        with open(gateway_server.public_key_filepath, 'r') as public_key_fd:
             gateway_server_public_key = public_key_fd.read()
         
         """Since key value pair is already present, it just returns it """
@@ -276,7 +241,9 @@ def sessions_public_key_exchange(user_id, session_id):
                 verification_url = '/v%s/sync/users/%s/sessions/%s' % \
                         (__api_version_number, user_id, session_id)
 
-                if user.update_public_key(session_id = session_id, public_key=user_public_key) > 0:
+                if user.update_public_key(
+                        session_id = session_id, public_key=user_public_key) > 0:
+
                     return jsonify(
                             {"public_key": gateway_server_public_key,
                                 "verification_url": verification_url
@@ -352,8 +319,6 @@ def sessions_user_fetch(user_id, session_id):
         if not 'password' in data:
             return 'missing password', 400
 
-        __gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
-
         try:
             """
             Password is in base64 and encrypted with server's public key
@@ -362,7 +327,7 @@ def sessions_user_fetch(user_id, session_id):
 
             decrypted_password = SecurityRSA.decrypt(
                     data=password,
-                    private_key_filepath=__gateway_confs_private_key_filepath)
+                    private_key_filepath=gateway_server.private_key_filepath)
             decrypted_password = decrypted_password.decode('utf-8')
         except Exception as error:
             logging.exception(error)
@@ -377,9 +342,8 @@ def sessions_user_fetch(user_id, session_id):
                 # TODO figure out what the issue here
                 return 'failed to authenticate', 401
             else:
-                websocket_message(message='__ACK__', user_id=user_id, session_id=session_id)
-                logging.debug("Authenticated successfully")
-
+                gateway_server.websocket_message(
+                        message='__ACK__', user_id=user_id, session_id=session_id)
                 # Authentication details are stored in the cookies, so use them for further request
                 # Shouldn't be stored because they expire after a while
 
@@ -400,7 +364,6 @@ def sessions_user_fetch(user_id, session_id):
                             data=shared_key, public_key=user_public_key)
 
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
-                    logging.debug("encrypted_shared_key: %s", encrypted_shared_key)
 
                     gateway_clients: list = []
                     user_platforms: dict = \
@@ -409,12 +372,10 @@ def sessions_user_fetch(user_id, session_id):
 
                     for i in range(len(user_platforms['saved_platforms'])):
                         user_platforms['saved_platforms'][i]["logo"] = \
-                                __gateway_server_confs['user_management_api']['api_url'] \
+                                user_management_api \
                                 + user_platforms['saved_platforms'][i]["logo"] 
-                    logging.debug(user_platforms)
 
                     user_platforms = user_platforms["saved_platforms"]
-                    logging.debug("user_platforms_payload: %s", user_platforms)
 
                     return jsonify(
                             {
@@ -425,7 +386,7 @@ def sessions_user_fetch(user_id, session_id):
     return '', 500
 
 
-@app.route('/sms/platform/<platform>/incoming/protocol/verification', methods=['POST'])
+@app.route('/sms/platform/<platform>', methods=['POST'])
 def sms_incoming(platform):
     """Receive inbound messages from Webhooks.
     Given that this URL is unique, only seeders can have the required key to route to them
@@ -460,6 +421,9 @@ def sms_incoming(platform):
         try:
             From = request.values.get('From', None)
             Body = request.values.get('Body', None)
+
+            logging.debug('\nFrom: %s\nBody: %s', From, Body)
+
             if publish_record(Body=Body, From=From):
                 return '', 200
             else:
@@ -473,148 +437,19 @@ def sms_incoming(platform):
     return '', 200
 
 
-def create_clients(data: dict) -> None:
-    try:
-        logging.debug("creating client...")
-        '''
-        validate -
-            - is valid number
-            - number matches imsi origins
-        - from number extract country
-        '''
-        client.create(data)
-        # return jsonify({"route_path":route_path}), 200
-    except Exception as error:
-        # logging.exception(error)
-        raise error
+if not gateway_server.check_has_keypair(
+        gateway_server.private_key_filepath,
+        gateway_server.public_key_filepath):
 
-
-def generate_keypair(private_key_filepath: str, public_key_filepath: str) -> tuple:
-    """Generates the main keypair values for Instance of Gateway server.
-    """
-    # securityRSA = SecurityRSA()
-    public_key, private_key = SecurityRSA.generate_keypair_write(
-            private_key_filepath=private_key_filepath, 
-            public_key_filepath=public_key_filepath)
-
-    return public_key, private_key
-
-
-def check_has_keypair(private_key_filepath, public_key_filepath) -> bool:
-    """Checks if public keys are installed on the system.
-    """
-    if not os.path.isfile(public_key_filepath):
-        logging.debug("public key not present at: %s", public_key_filepath)
-        return False
-
-    if not os.path.isfile(private_key_filepath):
-        logging.debug("private key not present at: %s", private_key_filepath)
-        return False
-    
-    return True
-
-def websocket_message(message: str, user_id: str, session_id: str) -> None:
-    """Messages the default gateway server websocket.
-
-    Args:
-        message (str):
-            Should contain the state of the synchronization process. Either of the following:
-                - __PAUSE__
-                - __ACK__
-    """
-
-    ssl_context=None
-    websocket_ssl_crt_filepath = __gateway_server_confs['websocket_ssl']['crt']
-    websocket_ssl_key_filepath = __gateway_server_confs['websocket_ssl']['key']
-    # websocket_ssl_pem_filepath = __gateway_server_confs['websocket_ssl']['pem']
-
-    websocket_protocol = "ws"
-    if (
-            os.path.exists(websocket_ssl_crt_filepath) and 
-            os.path.exists(websocket_ssl_key_filepath)):
-
-        """
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(
-                certfile=websocket_ssl_crt_filepath, keyfile=websocket_ssl_key_filepath)
-        """
-        websocket_protocol = "wss"
-
-    '''
-    if message == 'ack':
-        # uri= f"ws://localhost:{CONFIGS['WEBSOCKET']['PORT']}/sync/ack/{session_id}"
-        uri= f"{CONFIGS['WEBSOCKET']['URL']}:{CONFIGS['WEBSOCKET']['PORT']}/sync/ack/{session_id}"
-        print(uri)
-        ws = websocket.WebSocketApp(uri, on_error=socket_message_error)
-        if not ssl_context == None:
-            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-        else:
-            ws.run_forever()
-    '''
-
-    if message == '__PAUSE__':
-        def socket_message_error(wsapp, error):
-            logging.error(error)
-
-        # ws://localhost:6996/v2/sync/pause/user_id/session_id
-        websocket_url = "%s://%s:%s/v%s/sync/pause/%s/%s" % (
-                websocket_protocol,
-                __gateway_server_confs['websocket']['host'],
-                __gateway_server_confs['websocket']['port'],
-                __api_version_number,
-                user_id,
-                session_id)
-
-        logging.debug("pausing url: %s", websocket_url)
-        ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
-        """
-        if not ssl_context == None:
-            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-        else:
-            ws.run_forever()
-        """
-        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-
-    elif message == '__ACK__':
-        def socket_message_error(wsapp, error):
-            logging.error(error)
-
-        # ws://localhost:6996/v2/sync/pause/user_id/session_id
-        websocket_url = "%s://%s:%s/v%s/sync/ack/%s/%s" % (
-                websocket_protocol,
-                __gateway_server_confs['websocket']['host'],
-                __gateway_server_confs['websocket']['port'],
-                __api_version_number,
-                user_id,
-                session_id)
-
-        logging.debug("ack url: %s", websocket_url)
-        ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
-        if not ssl_context == None:
-            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-        else:
-            ws.run_forever()
-
-    else:
-        logging.error("Unknown socket message %s", message)
-
-
-__gateway_confs_public_key_filepath = __gateway_confs['security']['public_key_filepath']
-__gateway_confs_private_key_filepath = __gateway_confs['security']['private_key_filepath']
-
-if not check_has_keypair(
-        __gateway_confs_private_key_filepath,
-        __gateway_confs_public_key_filepath):
-
-    public_key, private_key = generate_keypair(
-            __gateway_confs_private_key_filepath, 
-            __gateway_confs_public_key_filepath)
+    public_key, private_key = gateway_server.generate_keypair(
+            gateway_server.private_key_filepath, 
+            gateway_server.public_key_filepath)
     logging.debug("Generated public key: %s", public_key)
     logging.debug("Generated private key: %s", private_key)
 
-logging.debug("- public key filepath: %s\n- private key filepath: %s", 
-        __gateway_confs_public_key_filepath,
-        __gateway_confs_private_key_filepath)
+logging.debug("[*] Public key filepath: %s\n[*] Private key filepath: %s", 
+        gateway_server.public_key_filepath,
+        gateway_server.private_key_filepath)
 
 Ledger.make_ledgers()
 logging.debug("[*] Checked and created ledgers...")

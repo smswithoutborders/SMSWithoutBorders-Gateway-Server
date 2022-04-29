@@ -410,36 +410,19 @@ def sms_incoming(platform):
         app.logger.debug('\nFrom: %s\nTo: %s\nFrom Country: %s\nBody: %s',
                       From, To, FromCountry, Body)
 
-        try:
-            if publish_record(Body=Body, From=From):
-                return '', 200
-            else:
-                return '', 400
-        except Exception as error:
-            return '', 500
-
-    if platform == 'gateway-client':
+    else:
         """Receives JSON Data.
         """
         try:
             data = json.loads(request.data)
         except Exception as error:
             logging.exception(error)
-            return '', 500
+            return 'invalid data type, json expected', 500
         else:
             Body = data['text']
             MSISDN = data['MSISDN']
 
             app.logger.debug('\n+ MSISDN: %s\n+ Body: %s', MSISDN, Body)
-            """
-            if publish_record(Body=Body, From=From):
-                return '', 200
-            else:
-                return '', 400
-            """
-
-    else:
-        return 'unknown platform requested', 400
 
     return '', 200
 

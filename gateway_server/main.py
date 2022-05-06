@@ -13,6 +13,12 @@ __confs.read(os.path.join(
 public_key_filepath = __confs['security']['public_key_filepath']
 private_key_filepath = __confs['security']['private_key_filepath']
 
+public_key_filepath = os.path.join(
+    os.path.dirname(__file__), public_key_filepath)
+
+private_key_filepath = os.path.join(
+    os.path.dirname(__file__), private_key_filepath)
+
 websocket_url = __confs['websocket']['host']
 websocket_port = __confs['websocket']['port']
 

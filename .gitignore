@@ -8,3 +8,4 @@ __pycache__/*
 */*.sw*
 security/*.pem
 **/__pycache__/*
+tmp/*

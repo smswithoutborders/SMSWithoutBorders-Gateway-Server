@@ -70,7 +70,7 @@ class Seeds(Ledger):
                 seed = Seeds(IMSI=IMSI, MSISDN=MSISDN, seed_type=seed_type)
 
                 if seed.expired():
-                    logging.debug("%s has expired!", MSISDN)
+                    logging.error("%s has expired!", MSISDN)
                 else:
                     try:
                         logging.error("MSISDN: %s", MSISDN)

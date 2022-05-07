@@ -113,32 +113,6 @@ def get_seeders():
     return '', 500
 
 
-"""
-@app.route('/clients/status/<IMSI>', methods=['GET'])
-def get_clients(IMSI):
-    logging.debug('beginning clients handshake')
-
-    try:
-        client = Clients(number=data['number'], 
-                sim_imei=data['sim_imei'])
-    except Exception as error:
-        # raise error
-        logging.exception(error)
-    else:
-        try:
-            logging.debug("cheking if client exist...")
-            if client.exist():
-                # return jsonify({"route_path":route_path}), 200
-                return 'exist'
-
-            else:
-                return 'not exist'
-        except Exception as error:
-            logging.exception(error)
-
-    return '', 500
-"""
-
 
 def publish_record(Body: str, From: str) -> bool:
     try:
@@ -402,7 +376,7 @@ def sessions_user_fetch(user_id, session_id):
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
                     logging.debug("encrypted_shared_key: %s", encrypted_shared_key)
 
-                    gateway_clients: list = []
+                    gateway_server_seeds_url = __gateway_confs['seeds']['api_endpoint']
                     user_platforms: dict = \
                             sessions_websocket.user_management_api_request_platforms( 
                                     request=request_payload, user_id = user_id)
@@ -420,7 +394,7 @@ def sessions_user_fetch(user_id, session_id):
                             {
                                 "shared_key": encrypted_shared_key.decode('utf-8'),
                                 "user_platforms": user_platforms,
-                                "gateway_clients": gateway_clients
+                                "seeds_url": gateway_server_seeds_url
                                 }), 200
     return '', 500
 

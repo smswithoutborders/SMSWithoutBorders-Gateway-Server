@@ -37,7 +37,8 @@ class Seeds(Ledger):
         current_time = time.time()
         logging.debug("Current time: %s", current_time)
 
-        ping_expiration_duration = 60 * 30 # 30 mins
+        # seconds
+        ping_expiration_duration = 20
         return (LPS + ping_expiration_duration) < current_time
 
 
@@ -69,7 +70,7 @@ class Seeds(Ledger):
                 seed = Seeds(IMSI=IMSI, MSISDN=MSISDN, seed_type=seed_type)
 
                 if seed.expired():
-                    logging.debug("%s has expired!", MSISDN)
+                    logging.error("%s has expired!", MSISDN)
                 else:
                     try:
                         logging.error("MSISDN: %s", MSISDN)

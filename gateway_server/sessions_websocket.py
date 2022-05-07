@@ -285,7 +285,7 @@ async def serve_sessions(websocket, path):
 
         __persistent_connections[client_persistent_key].state = '__PAUSE__'
         try:
-            await __persistent_connections[client_persistent_key].get_socket().send("201- paused")
+            await __persistent_connections[client_persistent_key].get_socket().send("201- pause")
         except Exception as error:
             logging.exception(error)
 

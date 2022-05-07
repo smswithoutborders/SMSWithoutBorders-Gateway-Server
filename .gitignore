@@ -9,3 +9,5 @@ __pycache__/*
 security/*.pem
 **/__pycache__/*
 tmp/*
+*.pem
+**.pem

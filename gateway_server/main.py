@@ -4,6 +4,8 @@ import os
 import configparser
 import websocket
 import logging
+import ssl
+
 from gateway_server.security.rsa import SecurityRSA
 
 __confs = configparser.ConfigParser(interpolation=None)
@@ -18,6 +20,8 @@ public_key_filepath = os.path.join(
 
 private_key_filepath = os.path.join(
     os.path.dirname(__file__), private_key_filepath)
+
+__api_version_number = 2
 
 websocket_url = __confs['websocket']['host']
 websocket_port = __confs['websocket']['port']

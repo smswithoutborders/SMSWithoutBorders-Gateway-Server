@@ -16,6 +16,9 @@ __api_version = 2
 __conf = configparser.ConfigParser(interpolation=None)
 __conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
 
+__api_conf = configparser.ConfigParser(interpolation=None)
+__api_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
+
 def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
     """Authenticates users at the user management api level.
 
@@ -29,7 +32,7 @@ def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
         state (bool), user_management_auth_payload (requests.Response)
     """
 
-    user_management_api_auth_url = __conf['user_management_api']['verification_url'] % \
+    user_management_api_auth_url = __api_conf['user_management_api']['verification_url'] % \
             (user_id)
     logging.debug("user_management_api_auth_url: %s", user_management_api_auth_url)
 
@@ -56,7 +59,7 @@ def user_management_api_request_platforms(request: requests.Session, user_id: st
         json_response (dict)
     """
  
-    user_management_api_platform_request_url = __conf['user_management_api']['platforms_url'] % \
+    user_management_api_platform_request_url = __api_conf['user_management_api']['platforms_url'] % \
             (user_id)
 
     response = request.get(
@@ -346,12 +349,7 @@ def construct_websocket_object():
 
 
 if __name__ == "__main__":
-    global __api_conf, __is_ssl
-
     logging.basicConfig(level='DEBUG')
-
-    __api_conf = configparser.ConfigParser()
-    __api_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
 
     connection_function = construct_websocket_object()
     logging.debug("%s", connection_function)

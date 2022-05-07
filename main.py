@@ -340,6 +340,8 @@ def sessions_user_fetch(user_id, session_id):
                                 user_id = user_id )
             except Exception as error:
                 # TODO figure out what the issue here
+                logging.error(error)
+                logging.exception(error)
                 return 'failed to authenticate', 401
             else:
                 gateway_server.websocket_message(

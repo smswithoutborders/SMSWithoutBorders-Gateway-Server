@@ -5,6 +5,7 @@ import configparser
 import websocket
 import logging
 import ssl
+import base64
 
 from gateway_server.security.rsa import SecurityRSA
 
@@ -31,6 +32,42 @@ websocket_port = __confs['websocket']['port']
 websocket_ssl_url = __confs['websocket_ssl']['host']
 websocket_ssl_crt_filepath = __confs['websocket_ssl']['crt']
 websocket_ssl_key_filepath = __confs['websocket_ssl']['key']
+
+
+def decrypt_message(message: str) -> str:
+    """
+    Format: {IV}{encrypted_content}
+    IV = [:16]
+    """
+    iv = message[:16]
+    logging.debug("iv: %s", iv)
+    encoded_encrypted_message = message[16:]
+    logging.debug("encoded_encrypted_message: %s", encoded_encrypted_message)
+
+def process_message_for_publishing(message: str) -> bool:
+    """
+    """
+    try:
+        decoded_message = str(base64.b64decode(bytes(message, 'utf-8')), 'utf-8')
+    except base64.binascii.Error as error:
+        return False
+
+    except Exception as error:
+        raise error
+    else:
+        logging.debug("Decoded message: %s", decoded_message)
+
+        try:
+            if len(decoded_message) < 16:
+                logging.debug("Message of len %d cannot be for publisher", 
+                        len(decoded_message))
+                return False
+
+            decrypted_mesage = decrypt_message(decoded_message)
+        except Exception as error:
+            raise error
+        else:
+            logging.debug("Decrypted message: %s", decrypted_message)
 
 
 def generate_keypair(private_key_filepath: str, public_key_filepath: str) -> tuple:

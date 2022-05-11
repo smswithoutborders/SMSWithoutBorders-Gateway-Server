@@ -409,8 +409,8 @@ def sms_incoming(platform):
         NumSegments = request.values.get('NumSegments', None)
         Body = request.values.get('Body', None)
 
-        app.logger.debug('\nFrom: %s\nTo: %s\nFrom Country: %s\nBody: %s',
-                      From, To, FromCountry, Body)
+        app.logger.debug("From: %s", From)
+        app.logger.debug("Body: %s", Body)
 
     else:
         """Receives JSON Data.
@@ -424,9 +424,18 @@ def sms_incoming(platform):
             Body = data['text']
             MSISDN = data['MSISDN']
 
-            app.logger.debug('\n+ MSISDN: %s\n+ Body: %s', MSISDN, Body)
+            app.logger.debug("MSISDN: %s", MSISDN)
+            app.logger.debug("Body: %s", Body)
 
-    return '', 200
+            try:
+                if gateway_server.process_message_for_publishing(
+                        message=Body):
+                    return 'message published successfully', 200
+            except Exception as error:
+                logging.exception(error)
+                return '', 500
+
+    return 'message not a publisher request', 200
 
 
 if not gateway_server.check_has_keypair(

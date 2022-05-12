@@ -179,3 +179,18 @@ class Users:
         else:
             return cur.fetchall()
 
+
+    def get_shared_key(self) -> str:
+        """Gets the user's stored public key.
+        """
+
+        try:
+            cur = self.con.cursor()
+            cur.execute(
+                    "SELECT shared_key FROM sessions WHERE user_id=:user_id", 
+                    {"user_id":self.user_id})
+        except Exception as error:
+            raise error
+        else:
+            return cur.fetchall()
+

@@ -13,6 +13,7 @@ import json
 import websocket
 import ssl
 import logging
+import requests
 
 from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
@@ -428,14 +429,107 @@ def sms_incoming(platform):
             app.logger.debug("Body: %s", Body)
 
             try:
-                if gateway_server.process_message_for_publishing(
-                        message=Body):
+                if not process_publisher(MSISDN=MSISDN, body=Body):
+                    return 'message cannot be published', 200
+                else:
                     return 'message published successfully', 200
             except Exception as error:
-                logging.exception(error)
-                return '', 500
+                app.logger.exception(error)
+                raise error
+        return 'cannot process request', 400
 
-    return 'message not a publisher request', 200
+def process_publisher(MSISDN: str, body: str) -> bool:
+    """
+    """
+
+    # TODO: sanitize Body and MSISDN
+    try:
+        iv, encrypted_message = gateway_server.process_message_for_publishing(
+                message=body)
+    except base64.binascii.Error as error:
+        app.logger.exception(error)
+    except Exception as error:
+        app.logger.exception(error)
+        return '', 500
+    else: 
+        app.logger.debug("iv: %s", iv)
+        app.logger.debug("encrypted_message: %s", encrypted_message)
+
+        try:
+            user_id = user_management_api_get_user_id(MSISDN=MSISDN)
+        except requests.exceptions.HTTPError as error:
+            app.logger.debug("Not an app user")
+            return False
+        except Exception as error:
+            raise error
+        else:
+            app.logger.debug("User ID: %s", user_id)
+            return True
+
+    return False
+
+
+def user_management_api_get_user_id(MSISDN: str) -> str:
+    """
+    """
+    auth_id=__gateway_confs['dev_api']['auth_id']
+    auth_key=__gateway_confs['dev_api']['auth_key']
+    try:
+        state, request = dev_backend_authenticate_user(
+                auth_id=auth_id, auth_key=auth_key)
+    except Exception as error:
+        raise error
+    else:
+        app.logger.debug("%s %s", state, request)
+        try:
+            api_response = user_management_api_request_user_id(
+                    request=request, MSISDN=MSISDN)
+        except Exception as error:
+            raise error
+        else:
+            """
+            """
+            user_id = api_response['user_id']
+            return user_id
+
+
+def user_management_api_request_user_id(
+        request: requests.Session, MSISDN: str) -> dict:
+    """Request for the user's tokens.
+
+    Args:
+        Request (requests.Session): authenticated sessions from dev BE.
+
+        MSISDN (str): phone number of the user token is requested for.
+
+    Returns:
+        json_response (dict)
+    """
+
+    backend_publisher_api_decrypted_tokens_request_url = "http://localhost:10000/v2/whoami"
+    response = request.post(
+            backend_publisher_api_decrypted_tokens_request_url,
+            json={"phone_number": MSISDN}, cookies=request.cookies.get_dict())
+
+    response.raise_for_status()
+
+    return response.json()
+
+def dev_backend_authenticate_user(auth_id: str, auth_key: str) -> tuple:
+    """
+    """
+    dev_backend_api_auth_url = __gateway_confs['dev_api']['authentication_url']
+    logging.debug("dev_backed_api_auth_url: %s", dev_backend_authenticate_user)
+
+    request = requests.Session()
+    response = request.post(
+            dev_backend_api_auth_url,
+            json={"auth_key": auth_key, "auth_id": auth_id})
+
+    response.raise_for_status()
+
+
+    return True, request
 
 
 if not gateway_server.check_has_keypair(
@@ -457,9 +551,20 @@ logging.debug("[*] Checked and created ledgers...")
 
 if __name__ == "__main__":
 
+    ssl_crt = __gateway_confs['api_ssl']['crt']
+    ssl_key = __gateway_confs['api_ssl']['key']
+
     debug = bool(__gateway_confs['api']['debug'])
     host = __gateway_confs['api']['host']
     port = int(__gateway_confs['api']['port'])
 
+    """
+    if ssl_crt != "" and ssl_key != "":
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(ssl_crt, ssl_key)
 
+        app.run(host=host, port=port, debug=debug, threaded=True, ssl_context=context )
+    else:
+        app.run(host=host, port=port, debug=debug, threaded=True )
+    """
     app.run(host=host, port=port, debug=debug, threaded=True )

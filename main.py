@@ -429,16 +429,42 @@ def sms_incoming(platform):
             app.logger.debug("Body: %s", Body)
 
             try:
-                if not process_publisher(MSISDN=MSISDN, body=Body):
+                decrypted_message = process_publisher(MSISDN=MSISDN, body=Body)
+                app.logger.debug("Decrypted message: %s", decrypted_message)
+
+                if decrypted_message is None:
                     return 'message cannot be published', 200
                 else:
-                    return 'message published successfully', 200
+                    try:
+                        publish(decrypted_message)
+                    except Exception as error:
+                        raise error
+                    else:
+                        return 'message published successfully', 200
             except Exception as error:
-                app.logger.exception(error)
                 raise error
         return 'cannot process request', 400
 
-def process_publisher(MSISDN: str, body: str) -> bool:
+def publish(message: bytes) -> None:
+    """
+    bytes required because that will keep using this endpoint intentional.
+    """
+    publisher_endpoint = __gateway_confs['publisher']['endpoint']
+    publisher_port = int(__gateway_confs['publisher']['port'])
+    publisher_url = "http://localhost:%d%s" % (publisher_port, publisher_endpoint)
+    logging.debug("publishing to: %s", publisher_url)
+
+    request = requests.Session()
+    response = request.post(
+            publisher_url,
+            json={"message": str(message, 'utf-8')})
+
+    response.raise_for_status()
+
+
+    return True, request
+
+def process_publisher(MSISDN: str, body: str) -> str:
     """
     """
 
@@ -459,7 +485,7 @@ def process_publisher(MSISDN: str, body: str) -> bool:
             user_id = user_management_api_get_user_id(MSISDN=MSISDN)
         except requests.exceptions.HTTPError as error:
             app.logger.debug("Not an app user")
-            return False
+            raise error
         except Exception as error:
             raise error
         else:
@@ -477,8 +503,7 @@ def process_publisher(MSISDN: str, body: str) -> bool:
                 app.logger.exception(error)
                 return '', 500
             else:
-                app.logger.debug("Decrypted message: %s", decrypted_message)
-                return True
+                return decrypted_message
 
     return False
 
@@ -520,7 +545,11 @@ def user_management_api_request_user_id(
         json_response (dict)
     """
 
-    backend_publisher_api_decrypted_tokens_request_url = "http://localhost:10000/v2/whoami"
+    backend_publisher_endpoint = __gateway_confs['backend_publisher']['endpoint']
+    backend_publisher_port = int(__gateway_confs['backend_publisher']['port'])
+    backend_publisher_api_decrypted_tokens_request_url = "http://localhost:%d%s" % (
+            backend_publisher_port, backend_publisher_endpoint)
+
     response = request.post(
             backend_publisher_api_decrypted_tokens_request_url,
             json={"phone_number": MSISDN}, cookies=request.cookies.get_dict())

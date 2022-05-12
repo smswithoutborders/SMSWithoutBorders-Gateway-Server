@@ -472,7 +472,7 @@ def process_publisher(MSISDN: str, body: str) -> bool:
 
             try:
                 decrypted_message = gateway_server.decrypt_message(
-                        iv=iv, shared_key=shared_key, message=Body)
+                        iv=iv, shared_key=shared_key, message=encrypted_message)
             except Exception as error:
                 app.logger.exception(error)
                 return '', 500

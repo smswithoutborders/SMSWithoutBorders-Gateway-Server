@@ -8,6 +8,7 @@ import ssl
 import base64
 
 from gateway_server.security.rsa import SecurityRSA
+from gateway_server.security.aes import AESCipher
 
 __confs = configparser.ConfigParser(interpolation=None)
 __confs.read(os.path.join(
@@ -37,6 +38,9 @@ websocket_ssl_key_filepath = __confs['websocket_ssl']['key']
 def decrypt_message(iv: str, shared_key: str, message: str)->str:
     """
     """
+    decrypted_data = AESCipher.decrypt(iv=iv, shared_key=shared_key, data=message)
+    # logging.debug(decrypted_data)
+    return decrypted_data
 
 def process_for_decryption(message: str) -> str:
     """Format: {IV}{encrypted_content}.

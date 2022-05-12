@@ -1,7 +1,6 @@
 # SMSWithoutBorders Gateway Server
 ### Requirements
 - python3
-- RabbitMQ
 
 
 ### Features

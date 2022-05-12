@@ -114,36 +114,6 @@ def get_seeders():
     return '', 500
 
 
-def publish_record(Body: str, From: str) -> bool:
-    try:
-        data = json.loads(b64decode(Body))
-        app.logger.debug("%s", data)
-
-    except Exception as error:
-        raise error
-    else:
-        if not 'IMSI' in data:
-            logging.error('no IMSI in data - %s', data)
-            return False
-
-        try:
-            ledger = Ledger()
-
-            data = {"MSISDN": From, "IMSI": data['IMSI'], "update_platform": platform}
-            if not ledger.exist(data):
-                ledger.create(data=data)
-                logging.info("New record inserted")
-            else:
-                logging.info("Record exist")
-        except Exception as error:
-            raise error
-        else:
-            # TODO: https://www.twilio.com/docs/sms/tutorials/how-to-receive-and-reply-python
-            # return jsonify({"MSISDN":From}), 200
-            return True
-
-
-@app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def sessions_start(user_id):
     """Begins a new synchronization session for User.
     

@@ -33,6 +33,11 @@ websocket_ssl_url = __confs['websocket_ssl']['host']
 websocket_ssl_crt_filepath = __confs['websocket_ssl']['crt']
 websocket_ssl_key_filepath = __confs['websocket_ssl']['key']
 
+
+def decrypt_message(iv: str, shared_key: str, message: str)->str:
+    """
+    """
+
 def process_for_decryption(message: str) -> str:
     """Format: {IV}{encrypted_content}.
     """

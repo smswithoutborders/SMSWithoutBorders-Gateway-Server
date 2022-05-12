@@ -183,7 +183,6 @@ class Users:
     def get_shared_key(self) -> str:
         """Gets the user's stored public key.
         """
-
         try:
             cur = self.con.cursor()
             cur.execute(

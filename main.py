@@ -464,7 +464,21 @@ def process_publisher(MSISDN: str, body: str) -> bool:
             raise error
         else:
             app.logger.debug("User ID: %s", user_id)
-            return True
+
+            user = Users(user_id)
+            shared_key = user.get_shared_key()
+            shared_key = shared_key[0][0]
+            app.logger.debug("Shared key: %s", shared_key)
+
+            try:
+                decrypted_message = gateway_server.decrypt_message(
+                        iv=iv, shared_key=shared_key, message=Body)
+            except Exception as error:
+                app.logger.exception(error)
+                return '', 500
+            else:
+                app.logger.debug("Decrypted message: %s", decrypted_message)
+                return True
 
     return False
 

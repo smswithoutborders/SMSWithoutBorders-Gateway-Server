@@ -392,6 +392,12 @@ def sms_incoming(platform):
             logging.exception(error)
             return 'invalid data type, json expected', 500
         else:
+            if not 'text' in data:
+                return 'missing key - text', 400
+
+            if not 'MSISDN' in data:
+                return 'missing key - MSISDN', 400
+
             Body = data['text']
             MSISDN = data['MSISDN']
 
@@ -406,7 +412,7 @@ def sms_incoming(platform):
                     return 'message cannot be published', 200
                 else:
                     try:
-                        publish(decrypted_message)
+                        publish(MSISDN=MSISDN, message=decrypted_message)
                     except Exception as error:
                         raise error
                     else:
@@ -415,7 +421,7 @@ def sms_incoming(platform):
                 raise error
         return 'cannot process request', 400
 
-def publish(message: bytes) -> None:
+def publish(MSISDN: str, message: bytes) -> None:
     """
     bytes required because that will keep using this endpoint intentional.
     """
@@ -427,7 +433,7 @@ def publish(message: bytes) -> None:
     request = requests.Session()
     response = request.post(
             publisher_url,
-            json={"message": str(message, 'utf-8')})
+            json={"MSISDN": MSISDN, "message": str(message, 'utf-8')})
 
     response.raise_for_status()
 

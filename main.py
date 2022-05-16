@@ -114,6 +114,7 @@ def get_seeders():
     return '', 500
 
 
+@app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def sessions_start(user_id):
     """Begins a new synchronization session for User.
     

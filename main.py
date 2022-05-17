@@ -150,11 +150,15 @@ def sessions_start(user_id):
                 websocket_protocol = "wss"
                 gateway_server.websocket_url = gateway_server.websocket_ssl_url
                         
-            return "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
+            qr_url = "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
                     gateway_server.websocket_url,
                     gateway_server.websocket_port, 
                     __api_version_number, 
-                    user_id, session_id), 200
+                    user_id, session_id)
+
+            mobile_url = ""
+
+            return jsonify({"qr_url":qr_url, "mobile_url":mobile_url}), 200
 
         except Exception as error:
             logging.exception(error)

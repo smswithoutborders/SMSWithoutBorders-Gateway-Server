@@ -9,6 +9,7 @@ import os
 import requests
 import ssl
 import logging
+import json
 
 
 __api_version = 2
@@ -201,10 +202,16 @@ async def serve_sessions(websocket, path):
                         api_port, 
                         __api_version, user_id, 
                         session_id)
+                mobile_app_url = ""
+
+                synchronization_request = {
+                        "qr_url": api_handshake_url,
+                        "mobile_url": mobile_app_url
+                        }
 
                 logging.debug("Gateway server handshake url %s", api_host)
 
-                await __persistent_connections[client_persistent_key].get_socket().send(api_handshake_url)
+                await __persistent_connections[client_persistent_key].get_socket().send(json.dumps(synchronization_request))
 
                 await asyncio.sleep(session_sleep_timeout)
 

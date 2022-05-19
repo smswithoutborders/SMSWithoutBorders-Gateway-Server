@@ -186,10 +186,12 @@ async def serve_sessions(websocket, path):
             api_ssl_key_filepath = __api_conf['api_ssl']['key']
 
             api_protocol = "http"
+            api_protocol_mobile = "app"
             if (
                     os.path.exists(api_ssl_crt_filepath) and 
                     os.path.exists(api_ssl_key_filepath)):
                 api_protocol = "https"
+                api_protocol_mobile = "apps"
 
             while(
                     session_change_counter < session_change_limit and 
@@ -202,11 +204,17 @@ async def serve_sessions(websocket, path):
                         api_port, 
                         __api_version, user_id, 
                         session_id)
-                mobile_app_url = ""
+
+                mobile_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
+                        api_protocol_mobile,
+                        api_host, 
+                        api_port, 
+                        __api_version, user_id, 
+                        session_id)
 
                 synchronization_request = {
                         "qr_url": api_handshake_url,
-                        "mobile_url": mobile_app_url
+                        "mobile_url": mobile_url
                         }
 
                 logging.debug("Gateway server handshake url %s", api_host)

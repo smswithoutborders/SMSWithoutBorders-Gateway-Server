@@ -192,6 +192,7 @@ def sessions_public_key_exchange(user_id, session_id):
         if not 'public_key' in data:
             return 'missing public key', 400
 
+        app.logger.debug("Requesting __PAUSE__")
         gateway_server.websocket_message(message='__PAUSE__', 
                 user_id = user_id, session_id = session_id)
 
@@ -223,7 +224,7 @@ def sessions_public_key_exchange(user_id, session_id):
                     return jsonify(
                             {"public_key": gateway_server_public_key,
                                 "verification_url": verification_url
-                                })
+                                }), 200
                 else:
                     logging.error("failed to update user[%s] session[%s]", user_id, session_id)
                 return "failed to update user's public key", 400
@@ -320,6 +321,7 @@ def sessions_user_fetch(user_id, session_id):
                 logging.exception(error)
                 return 'failed to authenticate', 401
             else:
+                app.logger.debug("Sending ACK__")
                 gateway_server.websocket_message(
                         message='__ACK__', user_id=user_id, session_id=session_id)
                 # Authentication details are stored in the cookies, so use them for further request
@@ -328,6 +330,7 @@ def sessions_user_fetch(user_id, session_id):
                 try:
                     user = Users(user_id) 
                     shared_key = user.update_shared_key(session_id=session_id)
+                    app.logger.debug("Shared key: %s", shared_key)
 
                     user_public_key = user.get_public_key(session_id=session_id)
                     if len(user_public_key) < 1:
@@ -423,7 +426,8 @@ def sms_incoming(platform):
                     else:
                         return 'message published successfully', 200
             except Exception as error:
-                raise error
+                logging.exception(error)
+                return '', 500
         return 'cannot process request', 400
 
 def publish(MSISDN: str, message: bytes) -> None:

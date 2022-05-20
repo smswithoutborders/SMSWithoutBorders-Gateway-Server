@@ -140,8 +140,8 @@ class Users:
             try:
                 cur = self.con.cursor()
                 cur.execute(
-                        "UPDATE sessions SET shared_key=:shared_key WHERE session_id=:session_id AND user_id=:user_id",
-                        {"shared_key":shared_key, "user_id":self.user_id, "session_id":session_id})
+                        "UPDATE sessions SET shared_key=:shared_key WHERE user_id=:user_id",
+                        {"shared_key":shared_key, "user_id":self.user_id})
                 self.con.commit()
 
             except Exception as error:

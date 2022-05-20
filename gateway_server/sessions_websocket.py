@@ -193,9 +193,12 @@ async def serve_sessions(websocket, path):
                 api_protocol = "https"
                 api_protocol_mobile = "apps"
 
+            """
             while(
                     session_change_counter < session_change_limit and 
                     __persistent_connections[client_persistent_key].state == '__RUN__'):
+            """
+            while( session_change_counter < session_change_limit):
 
                 # example: http://localhost:5000/v2/sync/users/0000/sessions/11111/handshake
                 api_handshake_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
@@ -227,6 +230,10 @@ async def serve_sessions(websocket, path):
 
                 prev_session=session_id
 
+                if __persistent_connections[client_persistent_key].state == '__ACK__':
+                    logging.debug("connection has been acked, closing")
+                    break
+
                 if __persistent_connections[client_persistent_key].state != '__PAUSE__':
                     try:
                         session_id = update_session(
@@ -252,9 +259,8 @@ async def serve_sessions(websocket, path):
                     logging.info("Paused for %s seconds", session_paused_timeout)
                     await asyncio.sleep(session_paused_timeout)
                     """
-                    session expires here, exiting loop
+                    session expires here, exiting loop - change itbefore exiting
                     """
-                    break
 
             try:
                 await __persistent_connections[client_persistent_key].get_socket().close()

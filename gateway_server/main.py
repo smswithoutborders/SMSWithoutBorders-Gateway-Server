@@ -117,11 +117,13 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
     # websocket_ssl_pem_filepath = __confs['websocket_ssl']['pem']
 
     websocket_protocol = "ws"
+    websocket_host = "localhost"
     if (
             os.path.exists(websocket_ssl_crt_filepath) and 
             os.path.exists(websocket_ssl_key_filepath)):
 
         websocket_protocol = "wss"
+        websocket_host = websocket_ssl_url
 
     if message == '__PAUSE__':
         def socket_message_error(wsapp, error):
@@ -130,8 +132,8 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
         # ws://localhost:6996/v2/sync/pause/user_id/session_id
         websocket_url = "%s://%s:%s/v%s/sync/pause/%s/%s" % (
                 websocket_protocol,
-                __confs['websocket']['host'],
-                __confs['websocket']['port'],
+                websocket_host,
+                websocket_port,
                 __api_version_number,
                 user_id,
                 session_id)
@@ -147,18 +149,15 @@ def websocket_message(message: str, user_id: str, session_id: str) -> None:
         # ws://localhost:6996/v2/sync/pause/user_id/session_id
         websocket_url = "%s://%s:%s/v%s/sync/ack/%s/%s" % (
                 websocket_protocol,
-                __confs['websocket']['host'],
-                __confs['websocket']['port'],
+                websocket_host,
+                websocket_port,
                 __api_version_number,
                 user_id,
                 session_id)
 
         logging.debug("ack url: %s", websocket_url)
         ws = websocket.WebSocketApp(websocket_url, on_error=socket_message_error)
-        if not ssl_context == None:
-            ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-        else:
-            ws.run_forever()
+        ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
     else:
         logging.error("Unknown socket message %s", message)

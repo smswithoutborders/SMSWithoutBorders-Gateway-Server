@@ -75,6 +75,7 @@ class Seeds(Ledger):
                     try:
                         MSISDN_country = telecom.get_phonenumber_country(MSISDN=MSISDN)
                         MSISDN_operator_name = telecom.get_phonenumber_operator_name(MSISDN=MSISDN)
+                        MSISDN_operator_id = telecom.get_phonenumber_operator_id(MSISDN=MSISDN)
                         LPS = float(seed.find_seed()[0][3])
                         seed = {
                                 "IMSI": IMSI,
@@ -82,6 +83,7 @@ class Seeds(Ledger):
                                 "seed_type": seed_type,
                                 "country": MSISDN_country,
                                 "operator_name": MSISDN_operator_name,
+                                "operator_id": MSISDN_operator_id,
                                 "LPS": LPS}
                         active_seeds.append(seed)
                     except Exception as error:

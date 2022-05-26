@@ -62,7 +62,7 @@ class Seeds(Ledger):
             """
 
             active_seeds = []
-            logging.debug("Seeds: %s", seeds)
+            # logging.debug("Seeds: %s", seeds)
             for seed in seeds:
                 IMSI = seed[0][0]
                 MSISDN = seed[0][1]
@@ -73,14 +73,15 @@ class Seeds(Ledger):
                     logging.error("%s has expired!", MSISDN)
                 else:
                     try:
-                        logging.error("MSISDN: %s", MSISDN)
                         MSISDN_country = telecom.get_phonenumber_country(MSISDN=MSISDN)
+                        MSISDN_operator_name = telecom.get_phonenumber_operator_name(MSISDN=MSISDN)
                         LPS = float(seed.find_seed()[0][3])
                         seed = {
                                 "IMSI": IMSI,
                                 "MSISDN": MSISDN,
                                 "seed_type": seed_type,
                                 "country": MSISDN_country,
+                                "operator_name": MSISDN_operator_name,
                                 "LPS": LPS}
                         active_seeds.append(seed)
                     except Exception as error:

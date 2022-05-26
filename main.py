@@ -350,6 +350,7 @@ def sessions_user_fetch(user_id, session_id):
                     user_platforms: dict = \
                             sessions_websocket.user_management_api_request_platforms( 
                                     request=request_payload, user_id = user_id)
+                    logging.debug(user_platforms)
 
                     for i in range(len(user_platforms['saved_platforms'])):
                         user_platforms['saved_platforms'][i]["logo"] = \

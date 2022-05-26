@@ -41,7 +41,8 @@ def get_phonenumber_country(MSISDN: str) -> str:
         if not phonenumbers.is_valid_number(_number):
             raise InvalidPhoneNUmber()
 
-        return phonenumbers.carrier.name_for_number(_number, "en")
+        # return phonenumbers.carrier.name_for_number(_number, "en")
+        return geocoder.description_for_number(_number, "en")
 
     except phonenumbers.NumberParseException as error:
         if error.error_type == phonenumbers.NumberParseException.INVALID_COUNTRY_CODE:

@@ -63,11 +63,13 @@ def user_management_api_request_platforms(request: requests.Session, user_id: st
     user_management_api_platform_request_url = __api_conf['user_management_api']['platforms_url'] % \
             (user_id)
 
+
     response = request.get(
             user_management_api_platform_request_url, 
             json={})
 
     response.raise_for_status()
+
 
     return response.json()
 

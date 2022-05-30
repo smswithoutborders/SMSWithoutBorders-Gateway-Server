@@ -40,14 +40,14 @@ cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 ```
 
 #### Usage
-<a name="synchronization" />
+<a name="synchronization" ></a>
 
 #### Gateway API
 
 ##### Manually start Gateway API
 ```bash
 . venv/bin/activate
-python3 app.py
+python3 main.py
 ```
 
 - Get List of available Nodes

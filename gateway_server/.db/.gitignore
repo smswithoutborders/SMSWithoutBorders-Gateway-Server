@@ -1,0 +1,4 @@
+nodes/*.db
+seeders/*.db
+**/*.db
+*.db

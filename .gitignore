@@ -2,3 +2,12 @@ config.ini
 default.js
 venv/*
 __pycache__/*
+*/__pycache__/*
+.idea/*
+*.sw*
+*/*.sw*
+security/*.pem
+**/__pycache__/*
+tmp/*
+*.pem
+**.pem

@@ -423,6 +423,7 @@ def sms_incoming(platform):
                     try:
                         publish(MSISDN=MSISDN, message=decrypted_message)
                     except Exception as error:
+                        logging.exception(error)
                         raise error
                     else:
                         return 'message published successfully', 200

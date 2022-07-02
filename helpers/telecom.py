@@ -2,6 +2,11 @@ import phonenumbers
 from phonenumbers import geocoder, carrier
 import helpers.MCCMNC as MCCMNC 
 
+"""
+List used by Android and google:
+    https://android.googlesource.com/platform/packages/providers/TelephonyProvider/+/master/assets/latest_carrier_id/carrier_list.textpb
+"""
+
 
 class InvalidPhoneNUmber(Exception):
     def __init__(self, message="INVALID PHONE NUMBER"):

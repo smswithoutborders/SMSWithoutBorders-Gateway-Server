@@ -40,38 +40,29 @@ CORS(
     supports_credentials=True,
 )
 
-@app.route('/seeds/ping', methods=['POST'])
+available_gateway_clients = {}
+
+@app.route('/seeds/ping', methods=['GET'])
 def seed_pings():
-    try:
-        data = request.json
-    except Exception as error:
-        return '', 500
-    else:
-        if not "IMSI" in data:
-            return 'missing IMSI', 400
+    """Modems send ping headers here to inform server they are still alive.
+    HEADER[sim_data], comes along from the modem.
 
-        if not "MSISDN" in data:
-            return 'missing MSISDN', 400
+    TODO: 
+        - Encrypt the sim_data information
+    """
 
-        if not "seed_type" in data:
-            return 'missing seeder state', 400
+    headers = request.headers
+    # app.logger.debug("Ping header information: %s", headers)
 
-        seed_IMSI = data['IMSI']
-        seed_MSISDN = data['MSISDN']
-        seed_type = data['seed_type']
+    if not 'sim_data' in headers:
+        return 'no sim data found', 400
 
-        try:
-            seed = Seeds(IMSI=seed_IMSI, MSISDN=seed_MSISDN, seed_type=seed_type)
+    sim_data = headers['sim_data'].split('.')
 
-            LPS = seed.register_ping_request()
-            app.logger.debug("Registered new ping LPS: %s", LPS)
-        except Exception as error:
-            logging.exception(error)
-            return '', 500
-        else:
-            return LPS, 200
+    imsi = sim_data[0]
+    app.logger.debug("Added gateway client: %s", imsi)
 
-    return '', 500
+    return '', 200
 
 
 @app.route('/seeds', methods=['GET'])

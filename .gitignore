@@ -11,3 +11,4 @@ security/*.pem
 tmp/*
 *.pem
 **.pem
+data

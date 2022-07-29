@@ -90,41 +90,56 @@ def get_seeds():
 @app.route('/seeds', methods=['POST'])
 def add_seed():
     try:
-        
         content_type = request.headers.get('Content-Type')
         if (content_type == 'application/json'):
-            data = request.get_json()
+            try:
+                data = request.get_json()
+            except Exception as Error:
+                return "Invalid json format", 400
+
             imsi = data['IMSI']
             msisdn = data['MSISDN']
             db_name = f'.db/{imsi}.db'
 
-            con = sqlite3.connect(db_name)
-            cur = con.cursor()
-            cur.execute('''CREATE TABLE IF NOT EXISTS imsi_msisdn
-                                (imsi text, msisdn text)''')
-            cur.execute('''INSERT INTO imsi_msisdn VALUES
-                                (?, ?)''', (imsi, msisdn))
-            con.commit()
-            con.close()
-            return "", 200
+            try:
+                con = sqlite3.connect(db_name)
+                cur = con.cursor()
+                cur.execute('''CREATE TABLE IF NOT EXISTS imsi_msisdn
+                                    (imsi text, msisdn text)''')
+                cur.execute('''INSERT INTO imsi_msisdn VALUES
+                                    (?, ?)''', (imsi, msisdn))
+                con.commit()
+                con.close()
+                return "", 200
+            except sqlite3.Error as err:
+                logging.exception(err)
+                return "", 500
         else:
-            return 'Content-Type not supported!', 500
+            return 'Content-Type not supported!', 400
     except Exception as error:
         logging.exception(error)
+
 
 @app.route('/seeds/<IMSI>', methods=['GET'])
-def get_seed_IMSI(IMSI):
+def get_seed_msisdn(IMSI):
     try:
-        seeds = Seeds.list()
-        for seed in seeds:
-            if seed["IMSI"] == IMSI:
-                return seed["MSISDN"], 200
+        db_path = f".db/{IMSI}.db"
+        if os.path.exists(db_path):
+            con = sqlite3.connect(db_path)
+            cur = con.cursor()
+            msisdn = cur.execute('''SELECT msisdn FROM imsi_msisdn
+                    WHERE imsi=?''', [IMSI]).fetchall()
+            con.close()
+            return msisdn[0][0], 200
+        else:
+            return "IMSI does not exist", 400
 
+    except sqlite3.Error as err:
+            logging.exception(err)
+            return "Error getting MSISDN", 500
     except Exception as error:
         logging.exception(error)
-        return '', 500
-
-    return '', 200
+        return 
 
 
 @app.route('/seeders', methods=['GET'])

@@ -79,12 +79,38 @@ def seed_pings():
 @app.route('/seeds', methods=['GET'])
 def get_seeds():
     try:
-        seeds = Seeds.list()
-        return jsonify(seeds), 200
+        dirname = os.path.dirname(__file__)
+        db_path = os.path.join(dirname, ".db")
+        if os.path.exists(db_path):
+            result = []
+            for file in os.listdir(db_path):
+                print("The file", file)
+                if file.endswith(".db"):
+                    try:
+                        db_name = os.path.join(db_path, file)
+                        con = sqlite3.connect(db_name)
+                        cur = con.cursor()
+                        imsi_msisdn = cur.execute('''SELECT * FROM imsi_msisdn''').fetchone()
+                        if len(imsi_msisdn) == 2:
+                            IMSI = imsi_msisdn[0]
+                            MSISDN = imsi_msisdn[1]
+                            data = {
+                                "IMSI": IMSI,
+                                "MSISDN": MSISDN
+                            }
+                            result.append(data)
+                        else:
+                            logging.exception(f"{db_name} has incomplete or no data")
+                        con.close()
+                    except sqlite3.Error as err:
+                        logging.exception(err)
+                        return "", 500
+            return jsonify(result), 200
+        else:
+            return "Database directory does not exist", 400
     except Exception as error:
         logging.exception(error)
-
-    return '', 500
+        return '', 500
 
 
 @app.route('/seeds', methods=['POST'])
@@ -130,10 +156,10 @@ def get_seed_msisdn(IMSI):
             con = sqlite3.connect(filename)
             cur = con.cursor()
             msisdn = cur.execute('''SELECT msisdn FROM imsi_msisdn
-                    WHERE imsi=?''', [IMSI]).fetchall()
+                    WHERE imsi=?''', [IMSI]).fetchone()
             con.close()
-            if msisdn[0][0]:
-                return msisdn[0][0], 200
+            if len(msisdn) > 0:
+                return msisdn[0], 200
             else:
                 return "MSISDN does not exist", 400
         else:
@@ -144,7 +170,7 @@ def get_seed_msisdn(IMSI):
             return "Error getting MSISDN", 500
     except Exception as error:
         logging.exception(error)
-        return 
+        return "", 500
 
 
 @app.route('/seeders', methods=['GET'])

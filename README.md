@@ -72,7 +72,7 @@ Returns
 ]
 ```
 ###### Possible Errors
-- `400`: Database directory does not exist
+- `400`: Database directory does not exist or no seed found
 - `500`: Internal server error (most likely from getting data from the .db files)
 
 ### Get the MSISDN of one seed

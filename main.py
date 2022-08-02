@@ -105,6 +105,8 @@ def get_seeds():
                     except sqlite3.Error as err:
                         logging.exception(err)
                         return "", 500
+            if len(result) <= 0:
+                return "No seeds found", 400
             return jsonify(result), 200
         else:
             return "Database directory does not exist", 400

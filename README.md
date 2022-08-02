@@ -50,28 +50,70 @@ cp gateway_server/confs/example.conf.ini gateway_server/confs/conf.ini
 python3 main.py
 ```
 
-- Get List of available Nodes
+
+## API Endpoints
+
+### Get List of available seeds
 `/seeds
 `
 
 For example
 ```bash
-curl localhost:6969/seeds -H "Content-Type: application/json"
+curl localhost:15000/seeds -H "Content-Type: application/json"
 ```
 
 Returns
 ```json
 [
   {
-    "IMSI": "sample_IMSI", 
-    "LPS": 1648206122.81431, 
-    "MSISDN": "sample_MSISDN", 
-    "seed_type": "seed"
+    "IMSI": "sample_IMSI",
+    "MSISDN": "sample_MSISDN"
   }
 ]
 ```
+###### Possible Errors
+- `400`: Database directory does not exist
+- `500`: Internal server error (most likely from getting data from the .db files)
 
-- Add Gateway to active Gateways
+### Get the MSISDN of one seed
+`/seed/<IMSI>
+`
+
+For example
+```bash
+curl localhost:15000/seeds/<IMSI> -H "Content-Type: application/json"
+```
+
+Returns
+```
+MSISDN string value
+```
+###### Possible Errors
+- `400`: IMSI or MSISDN does not exist
+- `500`: Internal server error (most likely when connecting or getting data from the .db file)
+
+
+### Register a seed
+`/seeds
+`
+
+For example
+```bash
+curl -X POST \
+	localhost:15000/seeds/ping \
+	-d '{"IMSI":"sample_IMSI", "MSISDN":"sample_MSISDN"}' \
+	-H "Content-Type: application/json"
+```
+
+Returns a 200 status code.
+
+###### Possible Errors
+- `400`: Either invalid content type or json format
+- `500`: Internal server error (most likely when trying to create a .db file)
+
+
+
+### Add Gateway to active Gateways
 `/ping
 `
 

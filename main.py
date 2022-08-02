@@ -123,14 +123,19 @@ def add_seed():
 @app.route('/seeds/<IMSI>', methods=['GET'])
 def get_seed_msisdn(IMSI):
     try:
-        db_path = f".db/{IMSI}.db"
-        if os.path.exists(db_path):
-            con = sqlite3.connect(db_path)
+        dirname = os.path.dirname(__file__)
+        db_file = f".db/{IMSI}.db"
+        filename = os.path.join(dirname, db_file)
+        if os.path.exists(filename):
+            con = sqlite3.connect(filename)
             cur = con.cursor()
             msisdn = cur.execute('''SELECT msisdn FROM imsi_msisdn
                     WHERE imsi=?''', [IMSI]).fetchall()
             con.close()
-            return msisdn[0][0], 200
+            if msisdn[0][0]:
+                return msisdn[0][0], 200
+            else:
+                return "MSISDN does not exist", 400
         else:
             return "IMSI does not exist", 400
 

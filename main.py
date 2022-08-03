@@ -70,37 +70,13 @@ def seed_pings():
 @app.route('/seeds', methods=['GET'])
 def get_seeds():
     try:
-        dirname = os.path.dirname(__file__)
-        db_path = os.path.join(dirname, ".db")
-        if os.path.exists(db_path):
-            result = []
-            for file in os.listdir(db_path):
-                print("The file", file)
-                if file.endswith(".db"):
-                    try:
-                        db_name = os.path.join(db_path, file)
-                        con = sqlite3.connect(db_name)
-                        cur = con.cursor()
-                        imsi_msisdn = cur.execute('''SELECT * FROM imsi_msisdn''').fetchone()
-                        if len(imsi_msisdn) == 2:
-                            IMSI = imsi_msisdn[0]
-                            MSISDN = imsi_msisdn[1]
-                            data = {
-                                "IMSI": IMSI,
-                                "MSISDN": MSISDN
-                            }
-                            result.append(data)
-                        else:
-                            logging.exception(f"{db_name} has incomplete or no data")
-                        con.close()
-                    except sqlite3.Error as err:
-                        logging.exception(err)
-                        return "", 500
-            if len(result) <= 0:
-                return "No seeds found", 400
-            return jsonify(result), 200
+        
+        response = Seeds.get_all_seeds()
+        if type(response[0]) == list and response[1] == 200:
+            return jsonify(response[0]), response[1]
         else:
-            return "Database directory does not exist", 400
+            return response[0], response[1]
+
     except Exception as error:
         logging.exception(error)
         return '', 500
@@ -118,20 +94,11 @@ def add_seed():
 
             imsi = data['IMSI']
             msisdn = data['MSISDN']
-            db_name = f'.db/{imsi}.db'
-
-            try:
-                con = sqlite3.connect(db_name)
-                cur = con.cursor()
-                cur.execute('''CREATE TABLE IF NOT EXISTS imsi_msisdn
-                                    (imsi text, msisdn text)''')
-                cur.execute('''INSERT INTO imsi_msisdn VALUES
-                                    (?, ?)''', (imsi, msisdn))
-                con.commit()
-                con.close()
-                return "", 200
-            except sqlite3.Error as err:
-                logging.exception(err)
+            
+            response = Seeds.register_seed(imsi, msisdn)
+            if response == 200:
+                return "Seed has been registered", 200
+            else:
                 return "", 500
         else:
             return 'Content-Type not supported!', 400
@@ -142,25 +109,13 @@ def add_seed():
 @app.route('/seeds/<IMSI>', methods=['GET'])
 def get_seed_msisdn(IMSI):
     try:
-        dirname = os.path.dirname(__file__)
-        db_file = f".db/{IMSI}.db"
-        filename = os.path.join(dirname, db_file)
-        if os.path.exists(filename):
-            con = sqlite3.connect(filename)
-            cur = con.cursor()
-            msisdn = cur.execute('''SELECT msisdn FROM imsi_msisdn
-                    WHERE imsi=?''', [IMSI]).fetchone()
-            con.close()
-            if len(msisdn) > 0:
-                return msisdn[0], 200
-            else:
-                return "MSISDN does not exist", 400
-        else:
-            return "IMSI does not exist", 400
 
-    except sqlite3.Error as err:
-            logging.exception(err)
-            return "Error getting MSISDN", 500
+        response = Seeds.get_seed_msisdn(IMSI)
+        if len(response) == 2:
+            return response[0], response[1]
+        else:
+            return "Could not retrieve MSISDN", 500
+
     except Exception as error:
         logging.exception(error)
         return "", 500

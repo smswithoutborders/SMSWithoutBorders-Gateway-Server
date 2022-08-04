@@ -73,7 +73,16 @@ def get_seeds():
         
         response = Seeds.get_all_seeds()
         if type(response[0]) == list and response[1] == 200:
-            return jsonify(response[0]), response[1]
+            print("Response", response[0])
+            seeds = []
+            for seed in response[0]:
+                data = {
+                    "IMSI": seed.IMSI,
+                    "MSISDN": seed.MSISDN
+                }
+                seeds.append(data)
+
+            return jsonify(seeds), response[1]
         else:
             return response[0], response[1]
 
@@ -95,7 +104,8 @@ def add_seed():
             imsi = data['IMSI']
             msisdn = data['MSISDN']
             
-            response = Seeds.register_seed(imsi, msisdn)
+            seed = Seeds(IMSI=imsi, MSISDN=msisdn)
+            response = seed.register_seed()
             if response == 200:
                 return "Seed has been registered", 200
             else:
@@ -110,9 +120,10 @@ def add_seed():
 def get_seed_msisdn(IMSI):
     try:
 
-        response = Seeds.get_seed_msisdn(IMSI)
+        seed = Seeds(IMSI=IMSI, MSISDN=None)
+        response = seed.get_seed_msisdn()
         if len(response) == 2:
-            return response[0], response[1]
+            return response[0].MSISDN, response[1]
         else:
             return "Could not retrieve MSISDN", 500
 

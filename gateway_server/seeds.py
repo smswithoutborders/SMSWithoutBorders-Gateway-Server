@@ -8,6 +8,8 @@ from gateway_server.ledger import Ledger
 from helpers import telecom
 
 class Seeds(Ledger):
+
+
     def __init__(self, IMSI: str, MSISDN: str, seed_type='seed'):
         """
         """
@@ -15,6 +17,7 @@ class Seeds(Ledger):
         self.IMSI = IMSI
         self.MSISDN = MSISDN
         self.seed_type = seed_type
+        self.db_dir = os.path.abspath(".db")
 
 
     def register_ping_request(self) -> str:
@@ -43,22 +46,18 @@ class Seeds(Ledger):
         ping_expiration_duration = 20
         return (LPS + ping_expiration_duration) < current_time
 
-    @staticmethod
-    def register_seed(imsi, msisdn):
-        """
-            Register the IMSI and MSISDN of a seed into a .db file
-        """
-        db_dir = os.path.abspath(".db")
-        if not os.path.exists(db_dir):
+    
+    def register_seed(self):
+        if not os.path.exists(self.db_dir):
             return 400
-        db_name = os.path.join(db_dir, f"{imsi}.db")
+        db_name = os.path.join(self.db_dir, f"{self.IMSI}.db")
         try:
             con = sqlite3.connect(db_name)
             cur = con.cursor()
             cur.execute('''CREATE TABLE IF NOT EXISTS imsi_msisdn
                                 (imsi text, msisdn text)''')
             cur.execute('''INSERT INTO imsi_msisdn VALUES
-                                (?, ?)''', (imsi, msisdn))
+                                (?, ?)''', (self.IMSI, self.MSISDN))
             con.commit()
             con.close()
             return 200
@@ -84,11 +83,9 @@ class Seeds(Ledger):
                             if len(imsi_msisdn) == 2:
                                 IMSI = imsi_msisdn[0]
                                 MSISDN = imsi_msisdn[1]
-                                data = {
-                                    "IMSI": IMSI,
-                                    "MSISDN": MSISDN
-                                }
-                                result.append(data)
+                                
+                                seed = Seeds(IMSI=IMSI, MSISDN=MSISDN)
+                                result.append(seed)
                             else:
                                 logging.exception(f"{db_name} has incomplete or no data")
                             con.close()
@@ -105,21 +102,20 @@ class Seeds(Ledger):
             return ("", 500)
 
     
-    @staticmethod
-    def get_seed_msisdn(imsi):
+    def get_seed_msisdn(self):
         
         try:
-            db_dir = os.path.abspath(".db")
-            db_file = f"{imsi}.db"
-            filename = os.path.join(db_dir, db_file)
+            db_file = f"{self.IMSI}.db"
+            filename = os.path.join(self.db_dir, db_file)
             if os.path.exists(filename):
                 con = sqlite3.connect(filename)
                 cur = con.cursor()
                 msisdn = cur.execute('''SELECT msisdn FROM imsi_msisdn
-                        WHERE imsi=?''', [imsi]).fetchone()
+                        WHERE imsi=?''', [self.IMSI]).fetchone()
                 con.close()
                 if len(msisdn) > 0:
-                    return (msisdn[0], 200)
+                    seed = Seeds(IMSI=self.IMSI, MSISDN=msisdn[0])
+                    return (seed, 200)
                 else:
                     return ("MSISDN does not exist", 400)
             else:

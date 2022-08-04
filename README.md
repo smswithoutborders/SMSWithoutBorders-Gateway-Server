@@ -59,7 +59,7 @@ python3 main.py
 
 For example
 ```bash
-curl localhost:/seeds -H "Content-Type: application/json"
+curl localhost:15000/seeds -H "Content-Type: application/json"
 ```
 
 Returns
@@ -72,7 +72,7 @@ Returns
 ]
 ```
 ###### Possible Errors
-- `400`: Database directory does not exist
+- `400`: Database directory does not exist or no seed found
 - `500`: Internal server error (most likely from getting data from the .db files)
 
 ### Get the MSISDN of one seed
@@ -81,7 +81,7 @@ Returns
 
 For example
 ```bash
-curl localhost:/seeds/<IMSI> -H "Content-Type: application/json"
+curl localhost:15000/seeds/<IMSI> -H "Content-Type: application/json"
 ```
 
 Returns

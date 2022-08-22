@@ -1,0 +1,26 @@
+
+name: Restart the gateway server
+on:
+  push:
+    branches:
+    - master
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
+        script: |
+          cd /var/www/repos/SMSWithoutBorders-Gateway-Server
+          git checkout master
+          git pull -r
+          . venv/bin/activate
+          pip3 install -r requirements.txt
+          deactivate
+          systemctl restart apache2.service

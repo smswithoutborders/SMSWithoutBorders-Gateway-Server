@@ -3,6 +3,7 @@
 # Use this for IDEs to check data types
 # https://docs.python.org/3/library/typing.html
 
+from crypt import methods
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -14,6 +15,7 @@ import websocket
 import ssl
 import logging
 import requests
+import sqlite3
 
 from gateway_server import sessions_websocket
 from gateway_server.ledger import Ledger
@@ -83,6 +85,32 @@ def get_seeds():
         logging.exception(error)
 
     return '', 500
+
+
+@app.route('/seeds', methods=['POST'])
+def add_seed():
+    try:
+        
+        content_type = request.headers.get('Content-Type')
+        if (content_type == 'application/json'):
+            data = request.get_json()
+            imsi = data['IMSI']
+            msisdn = data['MSISDN']
+            db_name = f'.db/{imsi}.db'
+
+            con = sqlite3.connect(db_name)
+            cur = con.cursor()
+            cur.execute('''CREATE TABLE IF NOT EXISTS imsi_msisdn
+                                (imsi text, msisdn text)''')
+            cur.execute('''INSERT INTO imsi_msisdn VALUES
+                                (?, ?)''', (imsi, msisdn))
+            con.commit()
+            con.close()
+            return "", 200
+        else:
+            return 'Content-Type not supported!', 500
+    except Exception as error:
+        logging.exception(error)
 
 @app.route('/seeds/<IMSI>', methods=['GET'])
 def get_seed_IMSI(IMSI):
@@ -187,6 +215,7 @@ def sessions_public_key_exchange(user_id, session_id):
         data = json.loads(request.data, strict=False)
     except Exception as error:
         logging.exception(error)
+
         return 'poorly formed json', 400
     else:
         if not 'public_key' in data:

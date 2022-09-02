@@ -396,7 +396,8 @@ def sms_incoming(platform):
         """Receives JSON Data.
         """
         try:
-            data = json.loads(request.data)
+            #data = json.loads(request.data)
+            data = request.get_json()
         except Exception as error:
             logging.exception(error)
             return 'invalid data type, json expected', 500
@@ -421,10 +422,10 @@ def sms_incoming(platform):
                     return 'message cannot be published', 200
                 else:
                     try:
-                        publish(MSISDN=MSISDN, message=decrypted_message)
+                        status, request_ = publish(MSISDN=MSISDN, message=decrypted_message)
                     except Exception as error:
                         logging.exception(error)
-                        raise error
+                        return '', 500
                     else:
                         return 'message published successfully', 200
             except Exception as error:
@@ -441,15 +442,15 @@ def publish(MSISDN: str, message: bytes) -> None:
     publisher_url = "http://localhost:%d%s" % (publisher_port, publisher_endpoint)
     logging.debug("publishing to: %s", publisher_url)
 
-    request = requests.Session()
-    response = request.post(
+    request_ = requests.Session()
+    response = request_.post(
             publisher_url,
             json={"MSISDN": MSISDN, "message": str(message, 'utf-8')})
 
     response.raise_for_status()
 
 
-    return True, request
+    return True, request_
 
 def process_publisher(MSISDN: str, body: str) -> str:
     """
@@ -461,9 +462,10 @@ def process_publisher(MSISDN: str, body: str) -> str:
                 message=body)
     except base64.binascii.Error as error:
         app.logger.exception(error)
+        raise error
     except Exception as error:
         app.logger.exception(error)
-        return '', 500
+        raise error
     else: 
         app.logger.debug("iv: %s", iv)
         app.logger.debug("encrypted_message: %s", encrypted_message)
@@ -488,11 +490,9 @@ def process_publisher(MSISDN: str, body: str) -> str:
                         iv=iv, shared_key=shared_key, message=encrypted_message)
             except Exception as error:
                 app.logger.exception(error)
-                return '', 500
+                raise error
             else:
                 return decrypted_message
-
-    return False
 
 
 def user_management_api_get_user_id(MSISDN: str) -> str:

@@ -2,6 +2,7 @@
 
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
 from Cryptodome.Hash import SHA256, SHA1
 from Cryptodome.Signature import pss
 import base64
@@ -87,29 +88,18 @@ class SecurityRSA:
         """
 
         with open(private_key_filepath, 'r') as fd:
-            private_key_raw = RSA.import_key(fd.read())
+            private_key = RSA.import_key(fd.read())
+
+        print(private_key)
 
         try:
             private_key = PKCS1_OAEP.new(
-                    key=private_key_raw, 
-                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
-
-            data_encoded = base64.b64decode(data)
-            decrypted_text = private_key.decrypt(data_encoded)
-
-        except Exception as error:
-            logging.exception(error)
-        
-        else:
-            return decrypted_text
-
-        try:
-            private_key = PKCS1_OAEP.new(
-                    key=private_key_raw, 
+                    key=private_key, 
                     hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA256))
 
-            data_encoded = base64.b64decode(data)
-            decrypted_text = private_key.decrypt(data_encoded)
+            # private_key = Cipher_PKCS1_v1_5.new(private_key)
+            data = base64.b64decode(data)
+            decrypted_text = private_key.decrypt(data)
 
         except Exception as error:
             raise error
@@ -128,6 +118,7 @@ class SecurityRSA:
         private_key = PKCS1_OAEP.new(
                 key=RSA.importKey(self.private_key), 
                 hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+
 
         decrypted_text = private_key.decrypt(data)
 

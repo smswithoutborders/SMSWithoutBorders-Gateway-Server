@@ -58,7 +58,7 @@ class SecurityRSA:
         return public_key, private_key
 
     @staticmethod
-    def encrypt_with_key(data: str, public_key: str) -> bytes:
+    def encrypt_with_key(data: str, public_key: str, encryption_hash: str='sha1') -> bytes:
         """Encrypt with public key stored in ..public.pem.
 
         Args:
@@ -67,9 +67,11 @@ class SecurityRSA:
         """
 
         logging.debug("user public key: %s", public_key)
+        encryption_hash_using = SHA256 if not encryption_hash == 'sha1' else SHA1
+
         public_key = PKCS1_OAEP.new(
                 key=RSA.importKey(public_key), 
-                hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+                hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, encryption_hash_using))
 
         data = bytes(data, 'utf-8')
         encrypted_text = public_key.encrypt(data)
@@ -78,7 +80,7 @@ class SecurityRSA:
     
 
     @staticmethod
-    def decrypt(data: str, private_key_filepath: str="private.pem") -> bytes:
+    def decrypt(data: str, private_key_filepath: str="private.pem", decryption_hash: str='sha1') -> bytes:
         """Decrypt with own private key stored in ..private.pem.
 
         Args:
@@ -89,24 +91,11 @@ class SecurityRSA:
         with open(private_key_filepath, 'r') as fd:
             private_key_raw = RSA.import_key(fd.read())
 
+        decryption_hash_using = SHA256 if not decryption_hash == 'sha1' else SHA1
         try:
             private_key = PKCS1_OAEP.new(
                     key=private_key_raw, 
-                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
-
-            data_encoded = base64.b64decode(data)
-            decrypted_text = private_key.decrypt(data_encoded)
-
-        except Exception as error:
-            logging.exception(error)
-        
-        else:
-            return decrypted_text
-
-        try:
-            private_key = PKCS1_OAEP.new(
-                    key=private_key_raw, 
-                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA256))
+                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, decryption_hash_using))
 
             data_encoded = base64.b64decode(data)
             decrypted_text = private_key.decrypt(data_encoded)

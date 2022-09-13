@@ -331,9 +331,14 @@ def sessions_user_fetch(user_id, session_id):
             """
             password = data['password']
 
+            decryption_hash = 'sha1'
+            if 'decryption_hash' in data:
+                decryption_hash = data['decryption_hash']
+
             decrypted_password = SecurityRSA.decrypt(
                     data=password,
-                    private_key_filepath=gateway_server.private_key_filepath)
+                    private_key_filepath=gateway_server.private_key_filepath,
+                    decryption_hash=decryption_hash)
             decrypted_password = decrypted_password.decode('utf-8')
         except Exception as error:
             logging.exception(error)
@@ -370,8 +375,13 @@ def sessions_user_fetch(user_id, session_id):
                     logging.exception(error)
                     return '', 500
                 else:
+
+                    encryption_hash = 'sha1'
+                    if 'encryption_hash' in data:
+                        encryption_hash = data['encryption_hash']
+
                     encrypted_shared_key: bytes = SecurityRSA.encrypt_with_key(
-                            data=shared_key, public_key=user_public_key)
+                            data=shared_key, public_key=user_public_key, encryption_hash=encryption_hash)
 
                     encrypted_shared_key = base64.b64encode(encrypted_shared_key)
 

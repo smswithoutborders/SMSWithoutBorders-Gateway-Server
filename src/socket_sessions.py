@@ -1,12 +1,10 @@
 #!/usr/bin/env python3 
 
 import asyncio
-import socket
 import websockets
 import uuid
 import configparser
 import os
-import requests
 import ssl
 import logging
 import json
@@ -14,83 +12,9 @@ import json
 
 __api_version = 2
 
-__conf = configparser.ConfigParser(interpolation=None)
-__conf.read(os.path.join(os.path.dirname(__file__), 'confs', 'conf.ini'))
-
-__api_conf = configparser.ConfigParser(interpolation=None)
-__api_conf.read(os.path.join(os.path.dirname(__file__), '../confs', 'conf.ini'))
-
-def user_management_api_authenticate_user(password: str, user_id: str) -> tuple:
-    """Authenticates users at the user management api level.
-
-    Args:
-        password (str): Password for user when they created the account.
-
-        user_id (str): unique identifier for the intended user. Assigned
-        when account was created.
-
-    Returns:
-        state (bool), user_management_auth_payload (requests.Response)
+class SocketSessions:
     """
-
-    user_management_api_auth_url = __api_conf['user_management_api']['verification_url'] % \
-            (user_id)
-    logging.debug("user_management_api_auth_url: %s", user_management_api_auth_url)
-
-    request = requests.Session()
-    response = request.post(
-            user_management_api_auth_url,
-            json={"password":password})
-
-    response.raise_for_status()
-
-    return True, request
-
-
-def user_management_api_request_platforms(request: requests.Session, user_id: str) -> dict:
-    """Request for the user's stored platforms.
-
-    Args:
-        headers (dict): Should be extracted from an authentication response.
-
-        user_id (str): unique identifier for the intended user. Assigned
-        when account was created.
-
-    Returns:
-        json_response (dict)
     """
- 
-    user_management_api_platform_request_url = __api_conf['user_management_api']['platforms_url'] % \
-            (user_id)
-
-
-    response = request.get(
-            user_management_api_platform_request_url, 
-            json={})
-
-    response.raise_for_status()
-
-
-    return response.json()
-
-
-def get_interface_ip(family: socket.AddressFamily) -> str:
-    # This method was extracted from pallet/flask (flask)
-    # https://github.com/pallets/werkzeug/blob/a44c1d76689ae6608d1783ac628127150826c809/src/werkzeug/serving.py#L925
-    """Get the IP address of an external interface. Used when binding to
-    0.0.0.0 or ::1 to show a more useful URL.
-    :meta private:
-    """
-    # arbitrary private address
-    host = "fd31:f903:5ab5:1::1" if family == socket.AF_INET6 else "10.253.155.219"
-
-    with socket.socket(family, socket.SOCK_DGRAM) as s:
-        try:
-            s.connect((host, 58162))
-        except OSError:
-            return "::1" if family == socket.AF_INET6 else "127.0.0.1"
-
-        return s.getsockname()[0]  # type: ignore
 
 class client_websocket:
     """Manages states of each client connecting.
@@ -179,8 +103,13 @@ async def serve_sessions(websocket, path):
                 Then it should be converted to local ip address.
             - Assumption is it would be bad practice to use 0.0.0.0 on a production server.
             """
+
+            """
             api_host = get_interface_ip(socket.AF_INET) if(
                     api_host == "0.0.0.0" and api_state != "production") else api_host
+            """
+
+            api_host = "127.0.0.1" 
 
             api_port = int(__api_conf['api']['port'])
 
@@ -336,6 +265,7 @@ async def serve_sessions(websocket, path):
             del __persistent_connections[client_persistent_key]
         except Exception as error:
             logging.exception(error)
+
 
 def construct_websocket_object():
     """Create the start connection url for the socket.

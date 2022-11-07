@@ -12,13 +12,13 @@ import json
 import ip_grap
 
 
-__api_version = 2
 logging.basicConfig(level='DEBUG')
-
 
 class SocketSessions:
     """
     """
+    __persistent_connections = {}
+
     class ClientWebsocket:
         """Manages states of each client connecting.
         """
@@ -62,13 +62,9 @@ class SocketSessions:
             return websockets.serve(active_sessions, server_ip, server_port, ssl=ssl_context)
         """
 
-        logging.debug("server %s -> port %s", self.host, self.port)
-
         """
         read for prod: 
             https://websockets.readthedocs.io/en/stable/reference/server.html
-
-            # TODO: origins should match host
         """
         async with websockets.serve(
                 ws_handler = self.active_sessions, 
@@ -111,7 +107,7 @@ class SocketSessions:
                     "mobile_url": mobile_url
                     }
 
-            await __persistent_connections[client_persistent_key].get_socket().send(
+            await self.__persistent_connections[client_persistent_key].get_socket().send(
                     json.dumps(synchronization_request))
 
             await asyncio.sleep(self.time_to_refresh)
@@ -120,7 +116,7 @@ class SocketSessions:
 
             prev_session =  session_id
 
-            client_state = __persistent_connections[client_persistent_key].state
+            client_state = self.__persistent_connections[client_persistent_key].state
 
             if client_state == '__PAUSE__':
                 await asyncio.sleep(self.session_paused_timeout)
@@ -138,11 +134,11 @@ class SocketSessions:
 
             client_persistent_key = session_id + user_id
 
-            if client_persistent_key in __persistent_connections:
+            if client_persistent_key in self.__persistent_connections:
                 raise Exception("connection already exist")
 
             client_socket = self.ClientWebsocket(client_socket_connection)
-            __persistent_connections[client_persistent_key] = client_socket
+            self.__persistent_connections[client_persistent_key] = client_socket
 
             try:
                 await self.__active_session__()
@@ -150,11 +146,11 @@ class SocketSessions:
                 logging.exception(error)
 
             try:
-                await __persistent_connections[client_persistent_key].get_socket().close()
+                await self.__persistent_connections[client_persistent_key].get_socket().close()
             except Exception as error:
                 logging.exception(error)
 
-            del __persistent_connections[client_persistent_key]
+            del self.__persistent_connections[client_persistent_key]
             logging.debug("removed client %s", client_persistent_key)
 
         except websockets.exceptions.ConnectionClosedError as error:
@@ -168,10 +164,10 @@ class SocketSessions:
         """
         """
         client_persistent_key = session_id + user_id
-        __persistent_connections[client_persistent_key].state = '__PAUSE__'
+        self.__persistent_connections[client_persistent_key].state = '__PAUSE__'
 
         try:
-            await __persistent_connections[client_persistent_key].get_socket().send("201- pause")
+            await self.__persistent_connections[client_persistent_key].get_socket().send("201- pause")
         except Exception as error:
             raise error
 
@@ -191,11 +187,11 @@ class SocketSessions:
         """
         client_persistent_key = session_id + user_id
 
-        __persistent_connections[client_persistent_key].state = '__ACK__'
+        self.__persistent_connections[client_persistent_key].state = '__ACK__'
         try:
-            await __persistent_connections[client_persistent_key].get_socket().send("200- ack")
-            await __persistent_connections[client_persistent_key].get_socket().close()
-            del __persistent_connections[client_persistent_key]
+            await self.__persistent_connections[client_persistent_key].get_socket().send("200- ack")
+            await self.__persistent_connections[client_persistent_key].get_socket().close()
+            del self.__persistent_connections[client_persistent_key]
         except Exception as error:
             raise error
 
@@ -223,7 +219,9 @@ class SocketSessions:
         return user_id, session_id
 
 
-    async def active_sessions(self, client_socket_connection: websockets.WebSocketServerProtocol, path: str) -> None:
+    async def active_sessions(self, 
+            client_socket_connection: websockets.WebSocketServerProtocol, 
+            path: str) -> None:
         """Websocket connection required for synchronizing users.
 
         Once a client is connected, this begins streaming a series of urls after set durations to the client.
@@ -239,7 +237,11 @@ class SocketSessions:
             else:
 
                 try:
-                    await self.__process_new_client_connection__(user_id = user_id, session_id=session_id)
+                    await self.__process_new_client_connection__(
+                            client_socket_connection=client_socket_connection, 
+                            user_id = user_id, 
+                            session_id=session_id)
+
                 except Exception as error:
                     logging.exception(error)
                     client_socket_connection.close(reason='')
@@ -248,8 +250,6 @@ class SocketSessions:
 def main(host: str, port: str) -> None:
     """
     """
-    global __persistent_connections
-    __persistent_connections = {}
 
     try:
         socket = SocketSessions(host=host, port=port)
@@ -261,7 +261,7 @@ def main(host: str, port: str) -> None:
 
 if __name__ == "__main__":
     try:
-        host = ip_grap.get_private_ip()
+        host = ip_grap.get_private_ip() if os.environ["HOST"] == "0.0.0.0" else os.environ["HOST"]
         port = os.environ["PORT"]
 
     except Exception as error:

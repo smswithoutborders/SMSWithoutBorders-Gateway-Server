@@ -92,7 +92,7 @@ class SocketSessions:
         session_id = uuid.uuid4().hex
 
         sessions_protocol = f"%s://{self.host}:{self.gateway_server_port}/" \
-                f"v2/sync/users/{user_id}/handshake/{session_id}/"
+                f"v2/sync/users/{user_id}/sessions/{session_id}/"
 
         api_handshake_url = sessions_protocol % ( self.gateway_server_protocol)
 

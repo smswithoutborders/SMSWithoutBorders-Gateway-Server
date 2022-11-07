@@ -80,7 +80,10 @@ class SecurityRSA:
     
 
     @staticmethod
-    def decrypt(data: str, private_key_filepath: str="private.pem") -> bytes:
+    def decrypt(data: str, 
+            private_key_filepath: str="private.pem", 
+            mgf1ParameterSpec: str='sha1',
+            hashingAlgorithm: str='sha256') -> bytes:
         """Decrypt with own private key stored in ..private.pem.
 
         Args:
@@ -91,11 +94,13 @@ class SecurityRSA:
         with open(private_key_filepath) as fd:
             private_key = RSA.import_key(fd.read())
 
-        decryption_hash_using = SHA256 if not decryption_hash == 'sha1' else SHA1
+        mgf1ParameterSpec = SHA256 if not mgf1ParameterSpec == 'sha1' else SHA1
+        hashingAlgorithm = SHA256 if not hashingAlgorithm == 'sha1' else SHA1
+
         try:
             private_key = PKCS1_OAEP.new(
                     key=private_key, 
-                    hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+                    hashAlgo=hashingAlgorithm.new(), mgfunc=lambda x,y: pss.MGF1(x,y, mgf1ParameterSpec))
 
             data = base64.b64decode(data)
             decrypted_text = private_key.decrypt(data)

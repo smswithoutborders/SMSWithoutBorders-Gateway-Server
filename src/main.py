@@ -29,32 +29,6 @@ CORS(
     supports_credentials=True,
 )
 
-"""sockets
-"""
-
-"""
-steps to sync:
-    1. user start sessions with server 
-        - sends verification url and user id
-            # check make sure no redirects can happen on server
-            # Thought - TODO: encrypt user id with server public key and send
-
-        - sends encrypted password to verification url
-            # cannot access password screen without handshake being established
-            # if event is strictly smswithoutborders, then domain needs be highjacked
-            # on app, verify the authenticity of verification url before sending password
-
-            TODO: Authenticate is valid session
-            TODO: Figure out where here the malicious person would sit to steal the password
-            TODO: If password is stolen access to tokens exposed
-            TODO: (something only us will know)
-            # Thought - TODO: decrypt encrypted user_id with private key
-
-        - receives encrypted shared key (shared keys should be tied to domains)
-            TODO: if shared key stolen, encrypted messages can be decrypted
-"""
-
-
 """
 @app.route('/sms/platform/<platform>', methods=['POST'])
 """
@@ -62,6 +36,7 @@ steps to sync:
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
     """
+    TODO: validate user_id before having it in production
     """
     try:
         port = app.config["SOCK_PORT"]
@@ -74,19 +49,27 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
+@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])
+def get_users_platforms(user_id: str, session_id: str):
+    """
+    """
+    try:
+        data = json.loads(request.data, strict=False)
+    except Exception as error:
+        logging.exception(error)
 
-@app.route('/v%s/sync/users/<user_id>/handshake/<session_id>/' % (__api_version_number), methods=['POST'])
-def user_perform_handshake(user_id: str, session_id: str):
-    """
-    """
-    app.logger.debug(user_id)
-    app.logger.debug(session_id)
-    return '', 200
+        return 'poorly formed json', 400
+    else:
 
-@app.route( '/v%s/sync/users/<user_id>/sessions/<session_id>' % (__api_version_number), methods=['POST'])
-def get_users_platforms(user_id: str):
-    """
-    """
+        if not 'password' in data:
+            return 'missing password', 400
+
+        decryption_hash = data['decryption_hash'] if 'decryption_hash' in data else 'sha1'
+        try:
+            decrypted_password = rsa.decrypt(data['password'], decryption_hash=decryption_hash)
+            # Figure out exception for error whil decrypting
+        except Exception as error:
+            return '', 403 
 
     """
     return jsonify(
@@ -96,3 +79,4 @@ def get_users_platforms(user_id: str):
                 "seeds_url": gateway_server_seeds_url
                 }), 200
     """
+    return '', 200

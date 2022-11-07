@@ -38,10 +38,10 @@ def get_sockets_sessions_url(user_id: str, session_id: str) -> str:
                     else os.environ.get("HOST")
 
             port = os.environ.get("SOC_PORT") \
-                    if "SOC_PORT" in os.environ else int(os.environ.get("PORT")) + 1
+                    if "SOC_PORT" in os.environ else str(int(os.environ.get("PORT")) + 1)
 
             logging.debug("socket host: %s", host)
-            logging.debug("socket port: %d", port)
+            logging.debug("socket port: %s", port)
 
             websocket_protocol = "ws"
             synchronization_initialization_url = "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
@@ -147,7 +147,7 @@ def sessions_user_update(user_id, session_id):
     return '', 500
 
 
-def sessions_user_fetch(user_id: str, session_id: str, password: str):
+def sessions_user_fetch(user_id: str, session_id: str, user_public_key: str, password: str):
     """Authenticates and fetches information to populate the usser's app.
     Authenticating users happen at the BE user management API which can be configured in the config routes.
     Args:
@@ -157,12 +157,17 @@ def sessions_user_fetch(user_id: str, session_id: str, password: str):
         password (str): User password encrypted with server public key
 
     Returns: {}, int
-
-    TODO:
-    - Decrypts the user password with own public key
-    - Authenticate user with user_id and decrypted password
-    - Use header to make request to API for platforms details
-    - Read complete ledger for available Gateways
-    - Generate and store secret (shared) key for against user
-    - Return platforms, gateways, user ID and secret key to user
     """
+
+    path_to_private_key = os.environ.get("RSA_PR_KEY")
+
+    decrypted_password = rsa.decrypt(password, path_to_private_key)
+
+    user_platforms = None
+    shared_key = None
+    encrypted_shared_key = rsa.encrypt(shared_key, user_public_key)
+
+    user = Users(user_id)
+    user.update_shared_key(shared_key)
+
+    return encrypted_shared_key, user_platforms

@@ -5,14 +5,12 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import sync
 
 import os
 import json
-import websocket
 import logging
 
-
-logging.basicConfig(level='DEBUG')
 __api_version_number = 2
 
 app = Flask(__name__)
@@ -43,38 +41,35 @@ steps to sync:
 
         - receives encrypted shared key (shared keys should be tied to domains)
             TODO: if shared key stolen, encrypted messages can be decrypted
-
-
-
-# App begins handshake from here
-@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/handshake' % (__api_version_number), methods=['POST'])
-
-
 """
+
 
 """
 @app.route('/sms/platform/<platform>', methods=['POST'])
-
-TODO:
-    - Generate and store public key pair in secured location
 """
+
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
     """
     """
     try:
-        sync.get_sockets_sessions_url(user_id=user_id)
+        session_id = '11111'
+        sockets_url = sync.get_sockets_sessions_url(user_id=user_id, session_id=session_id)
     except Exception as error:
         app.logger.exception(error)
         return '', 500
+    else:
+        return sockets_url, 200
 
-    """ should return the verification_url"""
 
-    return '', 200
+@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/handshake' % (__api_version_number), methods=['POST'])
+def user_perform_handshake(user_id: str, session_id: str):
+    """
+    """
 
 @app.route( '/v%s/sync/users/<user_id>/sessions/<session_id>' % (__api_version_number), methods=['POST'])
-def get_platforms(user_id: str):
+def get_users_platforms(user_id: str):
     """
     """
 
@@ -89,15 +84,25 @@ def get_platforms(user_id: str):
 
 
 
+
 if __name__ == "__main__":
     """Requirements: -
     ENV:
         - HOST
         - PORT
-        - SOC_PORT 
+        - SOC_PORT = websocket path, host is deduced
+        - RSA_PR_KEY = private key path for server
     """
-    host = os.environ.get("HOST")
-    port = os.environ.get("PORT")
-    debug = True
+    logging.basicConfig(level='DEBUG')
+    try:
+        host = os.environ["HOST"]
+        port = os.environ["PORT"]
+        os.environ["RSA_PR_KEY"]
 
-    app.run(host=host, port=port, debug=debug, threaded=True )
+        debug = True
+    except KeyError as error:
+        logging.exception(error)
+    except Exception as error:
+        logging.exception(error)
+    else:
+        app.run(host=host, port=port, debug=debug, threaded=True )

@@ -54,7 +54,6 @@ class SecurityRSA:
         file_out.write(public_key)
         file_out.close()
 
-
         return public_key, private_key
 
     @staticmethod
@@ -67,6 +66,9 @@ class SecurityRSA:
         """
 
         logging.debug("user public key: %s", public_key)
+
+        encryption_hash_using = SHA256 if not encryption_hash == 'sha1' else SHA1
+
         public_key = PKCS1_OAEP.new(
                 key=RSA.importKey(public_key), 
                 hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
@@ -89,6 +91,7 @@ class SecurityRSA:
         with open(private_key_filepath) as fd:
             private_key = RSA.import_key(fd.read())
 
+        decryption_hash_using = SHA256 if not decryption_hash == 'sha1' else SHA1
         try:
             private_key = PKCS1_OAEP.new(
                     key=private_key, 

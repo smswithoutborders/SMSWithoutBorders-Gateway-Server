@@ -1,262 +1,195 @@
 #!/usr/bin/env python3 
 
+import os
+import socket
+
 import asyncio
 import websockets
 import uuid
-import configparser
-import os
 import ssl
 import logging
 import json
+import ip_grap
 
 
 __api_version = 2
+logging.basicConfig(level='DEBUG')
+
 
 class SocketSessions:
     """
     """
+    class ClientWebsocket:
+        """Manages states of each client connecting.
+        """
+        state = '__RUN__'
+        def __init__(self, websocket):
+            self.websocket = websocket
+            # self.state = 'run'
 
-class client_websocket:
-    """Manages states of each client connecting.
-    """
+        def get_socket(self):
+            return self.websocket
 
-    state = '__RUN__'
-    def __init__(self, websocket):
-        self.websocket = websocket
-        # self.state = 'run'
+    def __init__(self, host: str, port: str):
+        """
+        """
+        self.host = host
+        self.port = port
 
-    def get_socket(self):
-        return self.websocket
 
-__persistent_connections = {}
+    async def construct_websocket_object(self):
+        """Create the start connection url for the socket.
+        Checks if SSL required files are present, then connect to wss.
+        """
+        """
+        ssl_crt_filepath = __conf['websocket_ssl']['crt']
+        ssl_key_filepath = __conf['websocket_ssl']['key']
+        ssl_pem_filepath = __conf['websocket_ssl']['pem']
 
-def update_session(session_id: str, api_host: str, api_port: int, user_id: str, api_protocol: str="http") -> str:
-    """Updates sessions for client.
-    Makes the request for new session and update it on the user's database.
+        if(
+                os.path.exists(ssl_crt_filepath) and 
+                os.path.exists(ssl_key_filepath) and 
+                os.path.exists(ssl_pem_filepath)):
 
-    Args:
-        session_id (str): valid in-use session id which will be used to track and update to new session id.
+            logging.debug("websocket going secured with WSS")
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ssl_context.load_cert_chain(certfile=ssl_crt_filepath, 
+                    keyfile=ssl_key_filepath)
 
-    Return: str
-    """
-    try:
-        # new_session_id = uuid.uuid4().hex
+            server_ip = __conf['websocket_ssl']['host']
+            logging.debug("server %s -> port %s", server_ip, server_port)
 
-        # example: http://localhost:5000/v2/sync/users/0000/sessions/11111
-        api_session_update_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s" % (
+            return websockets.serve(active_sessions, server_ip, server_port, ssl=ssl_context)
+        """
+
+        logging.debug("server %s -> port %s", self.host, self.port)
+
+        """
+        read for prod: 
+            https://websockets.readthedocs.io/en/stable/reference/server.html
+
+            # TODO: origins should match host
+        """
+        async with websockets.serve(
+                ws_handler = self.active_sessions, 
+                host = self.host, 
+                port = self.port,
+                origins = [self.host]):
+
+            await asyncio.Future()
+
+    def __get_sessions_url__(self):
+        """
+        """
+        api_handshake_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
                 api_protocol,
                 api_host, 
                 api_port, 
-                __api_version, 
-                user_id, 
+                __api_version, user_id, 
                 session_id)
-        response = requests.put(api_session_update_url)
 
-        if response.status_code == 200:
-            new_session_id = response.text
+        mobile_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
+                api_protocol_mobile,
+                api_host, 
+                api_port, 
+                __api_version, user_id, 
+                session_id)
+        
+        return api_handshake_url, mobile_url
+    
+    async def __active_session__(self):
+        """
+        """
+        session_change_counte = 0
+        while( session_change_counter < self.refresh_limit):
+            # example: http://localhost:5000/v2/sync/users/0000/sessions/11111/handshake
 
-            return new_session_id
-        else:
-            raise Exception("update status failed: HTTP status code %d", response.status_code)
+            api_handshake_url, mobile_url = self.__get_sessions_url__()
 
-    except Exception as error:
-        raise error
+            synchronization_request = {
+                    "qr_url": api_handshake_url,
+                    "mobile_url": mobile_url
+                    }
 
-async def serve_sessions(websocket, path):
-    """Websocket connection required for synchronizing users.
+            await __persistent_connections[client_persistent_key].get_socket().send(
+                    json.dumps(synchronization_request))
 
-    Once a client is connected, this begins streaming a series of urls after set durations to the client.
-    The URLs are session urls which when connected to begin a handshake process for the requesting user
-    """
+            await asyncio.sleep(self.time_to_refresh)
 
-    # http://localhost/v2/sync/init/1s1s/sss
+            session_change_counter += 1
 
-    if path.find('/v%s/sync/init' % (__api_version )) > -1:
-        split_path = path.split('/')
+            prev_session =  session_id
 
-        if len(split_path) < 5:
-            logging.error("Invalid init request")
-            return
+            client_state = __persistent_connections[client_persistent_key].state
 
-        user_id = split_path[-2]
-        session_id = split_path[-1]
-        logging.info("new client connection: %s %s", user_id, session_id)
+            if client_state == '__PAUSE__':
+                await asyncio.sleep(self.session_paused_timeout)
 
+            if client_state == "__ACK__":
+                logging.debug("connection has been acked, closing")
+                break
+    
+    async def __process_new_client_connection__(self, 
+            client_socket_connection: websockets.WebSocketServerProtocol, 
+            user_id: str, session_id: str):
+        """
+        """
         try:
-            client_persistent_key = session_id + user_id
-            if client_persistent_key in __persistent_connections:
-                logging.warning("client already connected with session %s", client_persistent_key)
-                await websocket.close(reason='already connected')
 
-            client_socket = client_websocket(websocket)
+            client_persistent_key = session_id + user_id
+
+            if client_persistent_key in __persistent_connections:
+                raise Exception("connection already exist")
+
+            client_socket = self.ClientWebsocket(client_socket_connection)
             __persistent_connections[client_persistent_key] = client_socket
 
-            session_change_counter = 0
-            session_change_limit = int(__conf['websocket_sync']['session_change_limit'])
-            session_sleep_timeout = int(__conf['websocket_sync']['session_sleep_timeout'])
-            session_paused_timeout = int(__conf['websocket_sync']['session_paused_timeout'])
-
-            api_host = __api_conf['api']['host']
-            api_state = __api_conf['api']['state']
-            """
-            - If api_host == 0.0.0.0:
-                Then it should be converted to local ip address.
-            - Assumption is it would be bad practice to use 0.0.0.0 on a production server.
-            """
-
-            """
-            api_host = get_interface_ip(socket.AF_INET) if(
-                    api_host == "0.0.0.0" and api_state != "production") else api_host
-            """
-
-            api_host = "127.0.0.1" 
-
-            api_port = int(__api_conf['api']['port'])
-
-            api_ssl_crt_filepath = __api_conf['api_ssl']['crt']
-            api_ssl_key_filepath = __api_conf['api_ssl']['key']
-
-            api_protocol = "http"
-            api_protocol_mobile = "app"
-            if (
-                    os.path.exists(api_ssl_crt_filepath) and 
-                    os.path.exists(api_ssl_key_filepath)):
-                api_protocol = "https"
-                api_protocol_mobile = "apps"
-
-            """
-            while(
-                    session_change_counter < session_change_limit and 
-                    __persistent_connections[client_persistent_key].state == '__RUN__'):
-            """
-            while( session_change_counter < session_change_limit):
-
-                # example: http://localhost:5000/v2/sync/users/0000/sessions/11111/handshake
-                api_handshake_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
-                        api_protocol,
-                        api_host, 
-                        api_port, 
-                        __api_version, user_id, 
-                        session_id)
-
-                mobile_url = "%s://%s:%d/v%d/sync/users/%s/sessions/%s/handshake" % (
-                        api_protocol_mobile,
-                        api_host, 
-                        api_port, 
-                        __api_version, user_id, 
-                        session_id)
-
-                synchronization_request = {
-                        "qr_url": api_handshake_url,
-                        "mobile_url": mobile_url
-                        }
-
-                logging.debug("Gateway server handshake url %s", api_host)
-
-                await __persistent_connections[client_persistent_key].get_socket().send(json.dumps(synchronization_request))
-
-                await asyncio.sleep(session_sleep_timeout)
-
-                session_change_counter += 1
-
-                prev_session=session_id
-
-                if __persistent_connections[client_persistent_key].state == '__ACK__':
-                    logging.debug("connection has been acked, closing")
-                    break
-
-                if __persistent_connections[client_persistent_key].state != '__PAUSE__':
-                    try:
-                        session_id = update_session(
-                                session_id=session_id, 
-                                api_host=api_host, 
-                                api_port=api_port, 
-                                user_id=user_id,
-                                api_protocol=api_protocol)
-
-                    except Exception as error:
-                        raise error
-
-                    else:
-                        new_client_persistent_key = session_id + user_id
-                        __persistent_connections[new_client_persistent_key] = __persistent_connections[client_persistent_key]
-
-                        del __persistent_connections[client_persistent_key]
-
-                        client_persistent_key = new_client_persistent_key
-                        logging.debug("updated session key to: %s", new_client_persistent_key)
-
-                else:
-                    logging.info("Paused for %s seconds", session_paused_timeout)
-                    await asyncio.sleep(session_paused_timeout)
-                    """
-                    session expires here, exiting loop - change itbefore exiting
-                    """
+            try:
+                await self.__active_session__()
+            except Exception as error:
+                logging.exception(error)
 
             try:
                 await __persistent_connections[client_persistent_key].get_socket().close()
-                del __persistent_connections[client_persistent_key]
-
-                logging.debug("removed client %s", client_persistent_key)
             except Exception as error:
                 logging.exception(error)
 
-
-            try:
-                session_id = update_session(
-                        session_id=session_id, 
-                        api_host=api_host, 
-                        api_port=api_port, 
-                        user_id=user_id, 
-                        api_protocol=api_protocol)
-            
-            except Exception as error:
-                logging.exception(error)
-
-            else:
-                logging.debug("removed client session %s", client_persistent_key)
-                logging.info("%d clients remain connected", len(__persistent_connections))
+            del __persistent_connections[client_persistent_key]
+            logging.debug("removed client %s", client_persistent_key)
 
         except websockets.exceptions.ConnectionClosedError as error:
-            logging.warning("socket connection closed: %s", client_socket)
+            raise error
 
         except Exception as error:
-            logging.exception(error)
             raise error
 
 
-    elif path.find('v%s/sync/pause' % (__api_version)) > -1:
-        split_path = path.split('/')
-
-        if len(split_path) < 5:
-            logging.error("Invalid pause request")
-            return
-
-        user_id = split_path[-2]
-        session_id = split_path[-1]
-
+    async def __process_pause_connection__(self, user_id: str, session_id: str):
+        """
+        """
         client_persistent_key = session_id + user_id
-        logging.info("session paused requested: %s", client_persistent_key)
-
         __persistent_connections[client_persistent_key].state = '__PAUSE__'
+
         try:
             await __persistent_connections[client_persistent_key].get_socket().send("201- pause")
+        except Exception as error:
+            raise error
+
+
+    @classmethod
+    async def pause_connection(cls, user_id: str, session_id: str):
+        """
+        """
+        try:
+            await cls.__process_ack_connection__(user_id = user_id, session_id =session_id)
         except Exception as error:
             logging.exception(error)
 
 
-    elif path.find('v%s/sync/ack' % (__api_version)) > -1:
-        split_path = path.split('/')
-
-        if len(split_path) < 5:
-            logging.error("Invalid ack request")
-            return
-
-        user_id = split_path[-2]
-        session_id = split_path[-1]
-
+    async def __process_ack_connection__(cls, user_id: str, session_id: str):
+        """
+        """
         client_persistent_key = session_id + user_id
-        logging.info("session ack requested: %s", client_persistent_key)
 
         __persistent_connections[client_persistent_key].state = '__ACK__'
         try:
@@ -264,48 +197,74 @@ async def serve_sessions(websocket, path):
             await __persistent_connections[client_persistent_key].get_socket().close()
             del __persistent_connections[client_persistent_key]
         except Exception as error:
+            raise error
+
+    @classmethod
+    async def ack_connection(cls, user_id: str, session_id: str):
+        """
+        """
+        try:
+            await cls.__process_ack_connection__(user_id=user_id, session_id=session_id)
+        except Exception as error:
             logging.exception(error)
 
 
-def construct_websocket_object():
-    """Create the start connection url for the socket.
-    Checks if SSL required files are present, then connect to wss.
+    def __verify_url_path__(self, path):
+        """
+        """
+        split_path = path.split('/')
+
+        if len(split_path) < 5:
+            raise Exception("Invalid init path request")
+        
+        user_id = split_path[-2]
+        session_id = split_path[-1]
+
+        return user_id, session_id
+
+
+    async def active_sessions(self, client_socket_connection: websockets.WebSocketServerProtocol, path: str) -> None:
+        """Websocket connection required for synchronizing users.
+
+        Once a client is connected, this begins streaming a series of urls after set durations to the client.
+        The URLs are session urls which when connected to begin a handshake process for the requesting user
+        """
+
+        # http://localhost/v2/sync/init/1s1s/sss
+        if path.find('/v2/sync/init') > -1:
+            try:
+                user_id, session_id = self.__verify_url_path__(path=path)
+            except Exception as error:
+                logging.exception(error)
+            else:
+
+                try:
+                    await self.__process_new_client_connection__(user_id = user_id, session_id=session_id)
+                except Exception as error:
+                    logging.exception(error)
+                    client_socket_connection.close(reason='')
+
+
+def main(host: str, port: str) -> None:
     """
+    """
+    global __persistent_connections
+    __persistent_connections = {}
 
-    logging.debug("constructing connection websocket object")
-    server_ip = __conf['websocket']['host']
-    server_port = __conf['websocket']['port']
-
-    ssl_crt_filepath = __conf['websocket_ssl']['crt']
-    ssl_key_filepath = __conf['websocket_ssl']['key']
-    ssl_pem_filepath = __conf['websocket_ssl']['pem']
-
-    if(
-            os.path.exists(ssl_crt_filepath) and 
-            os.path.exists(ssl_key_filepath) and 
-            os.path.exists(ssl_pem_filepath)):
-
-        logging.debug("websocket going secured with WSS")
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=ssl_crt_filepath, 
-                keyfile=ssl_key_filepath)
-
-        server_ip = __conf['websocket_ssl']['host']
-        logging.debug("server %s -> port %s", server_ip, server_port)
-
-        return websockets.serve(serve_sessions, server_ip, server_port, ssl=ssl_context)
-
+    try:
+        socket = SocketSessions(host=host, port=port)
+    except Exception as error:
+        logging.exception(error)
     else:
-        logging.debug("websocket going WS")
-        logging.debug("server %s -> port %s", server_ip, server_port)
-        return websockets.serve(serve_sessions, server_ip, server_port)
+        asyncio.run(socket.construct_websocket_object())
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level='DEBUG')
+    try:
+        host = ip_grap.get_private_ip()
+        port = os.environ["PORT"]
 
-    connection_function = construct_websocket_object()
-    logging.debug("%s", connection_function)
-
-    asyncio.get_event_loop().run_until_complete(connection_function)
-    asyncio.get_event_loop().run_forever()
+    except Exception as error:
+        logging.exception(error)
+    else:
+        main(host=host, port=port)

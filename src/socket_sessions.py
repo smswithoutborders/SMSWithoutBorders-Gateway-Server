@@ -9,7 +9,8 @@ import uuid
 import ssl
 import logging
 import json
-import ip_grap
+
+from src import ip_grap
 
 
 logging.basicConfig(level='DEBUG')
@@ -82,7 +83,7 @@ class SocketSessions:
                 origins = [self.host]):
 
             await asyncio.Future()
-
+    
     def __get_sessions_url__(self, user_id: str):
         """
         TODO: use session_id for something important
@@ -118,8 +119,11 @@ class SocketSessions:
                     "mobile_url": mobile_url
                     }
 
-            await self.__persistent_connections[user_id].get_socket().send(
-                    json.dumps(synchronization_request))
+            try:
+                await self.__persistent_connections[user_id].get_socket().send(
+                        json.dumps(synchronization_request))
+            except Exception as error:
+                raise error
 
             await asyncio.sleep(self.time_to_refresh)
 
@@ -224,7 +228,8 @@ class SocketSessions:
             except Exception as error:
                 logging.exception(error)
             else:
-                if user_id in self.__persistent_connections:
+                if user_id in self.__persistent_connections and \
+                        self.__persistent_connections[user_id].get_socket().open:
                     logging.error("User already exist...: %s", user_id)
                     return 
 
@@ -237,13 +242,28 @@ class SocketSessions:
                     logging.exception(error)
                     await client_socket_connection.close(reason='')
 
-
-def main(host: str, port: str, gateway_server_port: str) -> None:
+def get_host(host: str) -> str:
     """
     """
+    if not host:
+        host = "127.0.0.1"
 
+    host = ip_grap.get_private_ip() if host == "0.0.0.0" else host
+
+    return host
+
+def main() -> None:
+    """
+    """
+    PORT = os.environ.get("PORT")
+    SOCK_PORT = os.environ.get("SOCK_PORT") 
+    SOCK_HOST = os.environ.get("SOCK_HOST") 
+
+    host = get_host(SOCK_HOST)
     try:
-        socket = SocketSessions(host=host, port=port, gateway_server_port=gateway_server_port)
+        socket = SocketSessions(host=host, 
+                port=SOCK_PORT, gateway_server_port=PORT)
+
     except Exception as error:
         logging.exception(error)
     else:
@@ -251,13 +271,4 @@ def main(host: str, port: str, gateway_server_port: str) -> None:
 
 
 if __name__ == "__main__":
-    try:
-        port = os.environ["SOC_PORT"]
-        gateway_server_port = os.environ["PORT"]
-        host = ip_grap.get_private_ip() if os.environ.get("HOST")== "0.0.0.0" \
-                else os.environ.get("HOST")
-
-    except Exception as error:
-        logging.exception(error)
-    else:
-        main(host=host, port=port, gateway_server_port=gateway_server_port)
+    main()

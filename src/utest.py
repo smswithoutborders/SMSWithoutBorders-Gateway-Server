@@ -15,20 +15,19 @@ class Sync(unittest.TestCase):
         ip = ip_grap.get_private_ip()
         port = "8080"
 
-        os.environ["HOST"] = "localhost"
-        os.environ["SOC_PORT"] = port
+        # os.environ["HOST"] = "localhost"
+        # os.environ["SOC_PORT"] = port
+        host = "localhost"
+
 
         user_id = "00000"
-        session_id = "11111"
-
-        expected_session_url = "ws://%s:%s/v%s/sync/init/%s/%s" % (
-                ip,
+        expected_session_url = "ws://%s:%s/v%s/sync/init/%s" % (
+                host,
                 port,
                 "2",
-                user_id,
-                session_id)
+                user_id)
 
-        acquired_session_url = sync.get_sockets_sessions_url(user_id=user_id, session_id=session_id)
+        acquired_session_url = sync.get_sockets_sessions_url(user_id=user_id, host=host, port=port)
         self.assertEqual(acquired_session_url, expected_session_url)
 
     def test_sessions_public_key_exchange(self):

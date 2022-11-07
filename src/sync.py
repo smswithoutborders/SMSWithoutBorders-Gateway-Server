@@ -1,54 +1,26 @@
 import os
-import sync
-import ip_grap
+import src.ip_grap
 import logging
 
 __api_version_number = "2"
 
-def get_sockets_sessions_url(user_id: str, session_id: str) -> str:
-    """Begins a new synchronization session for User.
-    
-    A user can have multiple sessions.
-
-    Actions:
-    - create user record and store session ID.
-    - attach session ID to websocket url and return to agent.
-
-    Args:
-            user_id (str): UserID provided when the user logs in.
-
-    Returns: {}, int
-    
-    TODO:
-        - figure out mechanism to determine session expiration.
-
+def get_sockets_sessions_url(user_id: str, host: str, port: str) -> str:
     """
-
+    """
     try:
         # user = Users(user_id)
         user = None
     except Exception as error:
         raise error
-
     else:
         try:
-            # session_id = user.start_new_session()
-            host = ip_grap.get_private_ip() \
-                    if os.environ.get("HOST") == "127.0.0.1" or os.environ.get("HOST") == "localhost" \
-                    else os.environ.get("HOST")
-
-            port = os.environ.get("SOC_PORT") \
-                    if "SOC_PORT" in os.environ else str(int(os.environ.get("PORT")) + 1)
-
-            logging.debug("socket host: %s", host)
-            logging.debug("socket port: %s", port)
-
             websocket_protocol = "ws"
-            synchronization_initialization_url = "%s://%s:%s/v%s/sync/init/%s/%s" % (websocket_protocol, 
+            synchronization_initialization_url = "%s://%s:%s/v%s/sync/init/%s" % (
+                    websocket_protocol, 
                     host,
                     port,
                     __api_version_number, 
-                    user_id, session_id)
+                    user_id)
 
             return synchronization_initialization_url
 

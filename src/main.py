@@ -5,21 +5,32 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sync
+
+from src import sync, ip_grap, socket_sessions
 
 import os
 import json
 import logging
+import threading
 
 __api_version_number = 2
 
+RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
+HOST = os.environ.get("HOST")
+PORT = os.environ.get("PORT")
+SOCK_PORT = os.environ.get("SOCK_PORT")
+
 app = Flask(__name__)
+app.config.from_object(__name__)
 
 CORS(
     app,
     origins="*",
     supports_credentials=True,
 )
+
+"""sockets
+"""
 
 """
 steps to sync:
@@ -48,14 +59,15 @@ steps to sync:
 @app.route('/sms/platform/<platform>', methods=['POST'])
 """
 
-
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
     """
     """
     try:
-        session_id = '11111'
-        sockets_url = sync.get_sockets_sessions_url(user_id=user_id, session_id=session_id)
+        port = app.config["SOCK_PORT"]
+        host = socket_sessions.get_host(app.config["HOST"])
+
+        sockets_url = sync.get_sockets_sessions_url(user_id=user_id, host=host, port=SOCK_PORT)
     except Exception as error:
         app.logger.exception(error)
         return '', 500
@@ -63,10 +75,13 @@ def get_sync_url(user_id: str):
         return sockets_url, 200
 
 
-@app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/handshake' % (__api_version_number), methods=['POST'])
+@app.route('/v%s/sync/users/<user_id>/handshake/<session_id>/' % (__api_version_number), methods=['POST'])
 def user_perform_handshake(user_id: str, session_id: str):
     """
     """
+    app.logger.debug(user_id)
+    app.logger.debug(session_id)
+    return '', 200
 
 @app.route( '/v%s/sync/users/<user_id>/sessions/<session_id>' % (__api_version_number), methods=['POST'])
 def get_users_platforms(user_id: str):
@@ -81,28 +96,3 @@ def get_users_platforms(user_id: str):
                 "seeds_url": gateway_server_seeds_url
                 }), 200
     """
-
-
-
-
-if __name__ == "__main__":
-    """Requirements: -
-    ENV:
-        - HOST
-        - PORT
-        - SOC_PORT = websocket path, host is deduced
-        - RSA_PR_KEY = private key path for server
-    """
-    logging.basicConfig(level='DEBUG')
-    try:
-        host = os.environ["HOST"]
-        port = os.environ["PORT"]
-        os.environ["RSA_PR_KEY"]
-
-        debug = True
-    except KeyError as error:
-        logging.exception(error)
-    except Exception as error:
-        logging.exception(error)
-    else:
-        app.run(host=host, port=port, debug=debug, threaded=True )

@@ -64,9 +64,17 @@ def get_users_platforms(user_id: str, session_id: str):
         if not 'password' in data:
             return 'missing password', 400
 
-        decryption_hash = data['decryption_hash'] if 'decryption_hash' in data else 'sha1'
+        '''
+        TODO:
+            - update the ios app to have mgf1ParameterSpec
+            - update the android to have hashingAlgorithm
+        '''
+        mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
+        hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
+
         try:
-            decrypted_password = rsa.decrypt(data['password'], decryption_hash=decryption_hash)
+            decrypted_password = rsa.decrypt(data['password'],
+                                             decryption_hash=decryption_hash, hashingAlgorithm=hashingAlgorithm)
             # Figure out exception for error whil decrypting
         except Exception as error:
             return '', 403 

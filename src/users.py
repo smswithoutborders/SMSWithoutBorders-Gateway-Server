@@ -5,11 +5,24 @@ import logging
 import uuid
 import os
 
-from helpers import helpers
+from src.users_entity import UsersEntity
 
 class Users:
 
-    def __init__(self, user_id:str) -> None:
+    TABLES = {}
+
+    TABLES['gateway_server_users'] = (
+    "CREATE TABLE `gateway_server_users` ("
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `msisdn_hash` varchar(14) NOT NULL,"
+    "  `shared_key` varchar(16) NOT NULL,"
+    "  `public_key` varchar(16) NOT NULL,"
+    "  `date` date DEFAULT NULL,"
+    "  PRIMARY KEY (`id`)"
+    ") ENGINE=InnoDB")
+
+
+    def __init__(self, userEntity: UsersEntity) -> None:
         """Creates new user record if not exist.
 
         This method would create a record for the user and store in the path of 
@@ -19,177 +32,55 @@ class Users:
             public_key (str): User's public key.
             shared_key (str): Shared key for encrypting and decrypting incoming messages.
         """
-        self.public_key = None
-        self.shared_key = None
+        self.userEntity = userEntity
 
-        self.user_id = user_id
-        self.user_record_filename = "%s.db" % self.user_id
-
-        self.user_record_filepath = os.path.join(
-                os.path.dirname(__file__), '.db/users', self.user_record_filename)
-
-        logging.debug("user db filepath: %s", self.user_record_filepath)
-
-        try:
-            logging.debug('checking for user record file')
-            db_exist = self.__is_database__()
-        except Exception as error:
-            raise error
-        else:
-            if not db_exist:
-                try:
-                    self.__create_db__()
-                    logging.debug('created db file: %s', self.user_record_filepath)
-                except Exception as error:
-                    raise error
-        try:
-            logging.debug('checking for user record file tables')
-            self.__create_table__()
-        except Exception as error:
-            logging.error("failed to create table: %s", self.user_record_filepath)
-            raise error
-
-    def __is_database__(self):
-        try:
-            self.con = sqlite3.connect(
-                    f"file:{self.user_record_filepath}?mode=rw",
-                    uri=True)
-
-        except sqlite3.OperationalError as error:
-            # raise error
-            return False
-        except Exception as error:
-            raise error
-
-        return True
-
-
-    def __create_db__(self):
-        try:
-            self.con = sqlite3.connect(self.user_record_filepath)
-        except Exception as error:
-            raise error
-
-    def __create_table__(self):
-        try:
-            cur = self.con.cursor()
-            cur.execute('''CREATE TABLE IF NOT EXISTS sessions
-            (session_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            public_key TEXT,
-            shared_key TEXT,
-            update_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL);''')
-
-            self.con.commit()
-
-        except sqlite3.Warning as error:
-            # raise error
-            logging.warning(error)
-
-        except Exception as error:
-            raise error
-
-    def start_new_session(self, session_id: str = None) -> str:
-        """Add a new session record for the specific user.
-
-        Args:
-            user_id (str): Creates a new session for the user_id.
-
-        Returns:
-            int: the session ID.
+    def __create_database__(self):
         """
-
-        if not session_id:
-            session_id = uuid.uuid4().hex
-
-        logging.debug("starting new session [%s] for user [%s]", session_id, self.user_id)
-        cur = self.con.cursor()
-        try:
-            cur.execute(
-                "INSERT INTO sessions (session_id, user_id, public_key, shared_key) VALUES(?,?,?,?)",
-                (session_id, self.user_id, self.public_key, self.shared_key)
-            )
-            self.con.commit()
-        except Exception as error:
-            raise error
-
-        return session_id
-
-
-    def update_public_key(self, public_key: str, session_id: str) -> int:
-        try:
-            cur = self.con.cursor()
-            cur.execute(
-                    "UPDATE sessions SET public_key=:public_key WHERE session_id=:session_id AND user_id=:user_id",
-                    {"public_key":public_key, "user_id":self.user_id, "session_id":session_id})
-            self.con.commit()
-            
-            return cur.rowcount
-        except Exception as error:
-            raise error
-
-
-    def update_shared_key(self, session_id: str) -> str:
-        """Generates and updates user's shared key.
         """
+        cursor = self.userEntity.db.cursor()
         try:
-            shared_key = helpers.generate_shared_key()
-        except Exception as error:
-            raise error
-        else:
+            cursor.execute(
+            "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(
+                self.userEntity.MYSQL_DATABASE))
+        except mysql.connector.Error as err:
+            raise err
+
+
+    def __create_tables__(self):
+        """
+        """
+        cursor = self.userEntity.db.cursor()
+
+        for table_name in User.TABLES:
+            table_description = User.TABLES[table_name]
+
             try:
-                cur = self.con.cursor()
-                cur.execute(
-                        "UPDATE sessions SET shared_key=:shared_key WHERE user_id=:user_id",
-                        {"shared_key":shared_key, "user_id":self.user_id})
-                self.con.commit()
-
-            except Exception as error:
-                raise error
+                cursor.execute(table_description)
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                    logging.warning("User table[%s] populate: already exist.", table_name)
+                else:
+                    raise err
             else:
-                return shared_key
+                logging.info("User table[%s] populate: OK.", table_name)
 
-    def update_current_session(self, current_session_id: str, session_id: str = None) -> str:
-        try:
-            if not session_id:
-                session_id = uuid.uuid4().hex
+        cursor.close()
 
-            cur = self.con.cursor()
-            cur.execute(
-                    "UPDATE sessions SET session_id=:session_id WHERE session_id=:current_session_id AND user_id=:user_id",
-                    {"session_id":session_id, "current_session_id":current_session_id, "user_id":session_id})
-            logging.debug("rows affected: %s", cur.rowcount)
-            self.con.commit()
-        except Exception as error:
-            raise error
-        else:
-            return session_id
-    
-    def get_public_key(self, session_id: str) -> str:
-        """Gets the user's stored public key.
+
+    def create_database_and_tables__(self) -> None:
         """
-
-        try:
-            cur = self.con.cursor()
-            cur.execute(
-                    "SELECT public_key FROM sessions WHERE user_id=:user_id AND session_id=:session_id", 
-                    {"user_id":self.user_id, "session_id":session_id})
-        except Exception as error:
-            raise error
-        else:
-            return cur.fetchall()
-
-
-    def get_shared_key(self) -> str:
-        """Gets the user's stored public key.
         """
         try:
-            cur = self.con.cursor()
-            cur.execute(
-                    "SELECT shared_key FROM sessions WHERE user_id=:user_id", 
-                    {"user_id":self.user_id})
+            self.__create_database__()
         except Exception as error:
             raise error
-        else:
-            return cur.fetchall()
 
+        try:
+            self.__create_tables__()
+        except Exception as error:
+            raise error
+
+    def store_shared_key(self, shared_key: str) -> None:
+        """
+        TODO: shared key should be encrypted when stored
+        """

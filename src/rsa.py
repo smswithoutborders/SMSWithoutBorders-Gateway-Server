@@ -57,7 +57,8 @@ class SecurityRSA:
         return public_key, private_key
 
     @staticmethod
-    def encrypt_with_key(data: str, public_key: str) -> bytes:
+    def encrypt_with_key(data: str, public_key: str, mgf1ParameterSpec: str='sha1', 
+            hashingAlgorithm: str='sha256') -> bytes:
         """Encrypt with public key stored in ..public.pem.
 
         Args:
@@ -65,13 +66,12 @@ class SecurityRSA:
             public_key (str): Base64 public key, possibly in PEM format.
         """
 
-        logging.debug("user public key: %s", public_key)
-
-        encryption_hash_using = SHA256 if not encryption_hash == 'sha1' else SHA1
+        mgf1ParameterSpec = SHA256 if not mgf1ParameterSpec == 'sha1' else SHA1
+        hashingAlgorithm = SHA256 if not hashingAlgorithm == 'sha1' else SHA1
 
         public_key = PKCS1_OAEP.new(
                 key=RSA.importKey(public_key), 
-                hashAlgo=SHA256.new(), mgfunc=lambda x,y: pss.MGF1(x,y, SHA1))
+                hashAlgo=hashingAlgorithm.new(), mgfunc=lambda x,y: pss.MGF1(x,y, mgf1ParameterSpec))
 
         data = bytes(data, 'utf-8')
         encrypted_text = public_key.encrypt(data)

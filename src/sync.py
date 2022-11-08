@@ -2,7 +2,22 @@ import os
 import src.ip_grap
 import logging
 
+import secrets
+
 __api_version_number = "2"
+
+
+def generate_shared_key(keysize: int=256//16) -> str:
+    """Generates a shared key.
+    Why //16? https://stackoverflow.com/a/50321063
+    Args:
+        keysize (int): size of key (in bits) to generate (defaults to 256).
+    Returns:
+        key (str): Generated key.
+    """
+
+    return secrets.token_hex(nbytes=keysize)
+
 
 def get_sockets_sessions_url(user_id: str, host: str, port: str) -> str:
     """

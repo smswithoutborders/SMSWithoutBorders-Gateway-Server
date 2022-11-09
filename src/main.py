@@ -113,24 +113,33 @@ def get_users_platforms(user_id: str, session_id: str):
         hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
 
         try:
-            user_public_key = data['public_key']
 
+            """
             decrypted_password = rsa.decrypt(data['password'], 
                     decryption_hash=decryption_hash, hashingAlgorithm=hashingAlgorithm)
+            """
+            decrypted_password = None
+            
+            user_public_key = data['public_key']
+            user_msisdn_hash = None
 
-            user = users.instance(user_id=user_id)
+            user = users.find(msisdn_hash=user_msisdn_hash)
+            user.id = user_id
+            user_shared_key = sync.generate_shared_key()
+
+            user.public_key = user_public_key
+            user.msisdn_hash = user_msisdn_hash
+            user.shared_key = user_shared_key
 
             try:
-                shared_key = sync.generate_shared_key()
-
-                users.store_shared_key(shared_key)
-
+                users.commit(user)
             except Exception as error:
                 logging.exception(error)
                 return '', 500
 
             try:
-                user_platforms = users.get_platforms()
+                user_platforms = users.get_platforms(user)
+
                 encrypted_shared_key = rsa.encrypt_with_key(
                         data=shared_key, 
                         public_key=user_public_key,
@@ -149,4 +158,5 @@ def get_users_platforms(user_id: str, session_id: str):
             # TODO if error decrypting should have 500
             # TODO exception for bad decryption
         except Exception as error:
+            logging.exception(error)
             return '', 500 

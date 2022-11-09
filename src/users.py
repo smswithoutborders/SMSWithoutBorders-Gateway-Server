@@ -7,18 +7,32 @@ import os
 
 from src.users_entity import UsersEntity
 
-class Users:
+import mysql.connector
+from mysql.connector import errorcode
 
+class User:
+
+    user_id = None
+
+    public_key = None
+
+    msisdn_hash = None
+
+    shared_key = None
+
+
+class Users(User):
     TABLES = {}
 
-    TABLES['gateway_server_users'] = (
-    "CREATE TABLE `gateway_server_users` ("
-    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
+    TABLE_NAME = "gateway_server_users"
+
+    TABLES[TABLE_NAME] = (
+    f"CREATE TABLE `{TABLE_NAME}` ("
     "  `msisdn_hash` varchar(14) NOT NULL,"
     "  `shared_key` varchar(16) NOT NULL,"
     "  `public_key` varchar(16) NOT NULL,"
     "  `date` date DEFAULT NULL,"
-    "  PRIMARY KEY (`id`)"
+    "  PRIMARY KEY (`msisdn_hash`)"
     ") ENGINE=InnoDB")
 
 
@@ -32,31 +46,45 @@ class Users:
             public_key (str): User's public key.
             shared_key (str): Shared key for encrypting and decrypting incoming messages.
         """
+
         self.userEntity = userEntity
+        self.connection = mysql.connector.connect(
+                user=self.userEntity.MYSQL_USER,
+                database=self.userEntity.MYSQL_DATABASE,
+                password=self.userEntity.MYSQL_PASSWORD)
+
 
     def __create_database__(self):
         """
         """
-        cursor = self.userEntity.db.cursor()
+        connection = mysql.connector.connect(
+                user=self.userEntity.MYSQL_USER,
+                password=self.userEntity.MYSQL_PASSWORD)
+
+        cursor = connection.cursor()
         try:
             cursor.execute(
             "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(
                 self.userEntity.MYSQL_DATABASE))
         except mysql.connector.Error as err:
-            raise err
+            if err.errno == errorcode.ER_DB_CREATE_EXISTS:
+                logging.warning("Database [%s] creation: already exist",
+                        self.userEntity.MYSQL_DATABASE)
+            else:
+                raise err
 
 
     def __create_tables__(self):
         """
         """
-        cursor = self.userEntity.db.cursor()
+        cursor = self.connection.cursor()
 
-        for table_name in User.TABLES:
-            table_description = User.TABLES[table_name]
+        for table_name in self.TABLES:
+            table_description = self.TABLES[table_name]
 
             try:
                 cursor.execute(table_description)
-            except mysql.connector.Error as err:
+            except (mysql.connector.Error, Exception) as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     logging.warning("User table[%s] populate: already exist.", table_name)
                 else:
@@ -84,3 +112,49 @@ class Users:
         """
         TODO: shared key should be encrypted when stored
         """
+
+    def commit(self, user: User) -> None:
+        """
+        insert or update
+        """
+        cursor = self.connection.cursor()
+
+        insert_query = (
+                f"INSERT INTO {self.TABLE_NAME} (public_key, shared_key, msisdn_hash) "
+                "VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE "
+                "public_key=%s, shared_key=%s WHERE msisdn_hash=%s")
+
+        cursor.execute(insert_query, (
+            user.public_key,
+            user.shared_key,
+            user.msisdn_hash,
+
+            user.public_key,
+            user.shared_key,
+            user.msisdn_hash))
+
+        self.connection.commit()
+
+        cursor.close()
+
+    def find(self, msisdn_hash: str) -> None:
+        """
+        """
+        if not msisdn_hash:
+            return User()
+
+        cursor = self.connection.cursor()
+        query = (
+                "SELECT public_key, shared_key, msisdn_hash "
+                f"FROM {self.TABLE_NAME} WHERE msisdn_hash = %s")
+        cursor.execute(query, (msisdn_hash))
+
+        for (public_key, shared_key, msisdn_hash) in cursor:
+            user = User()
+            user.public_key = public_key
+            user.shared_key = shared_key
+            user.msisdn_hash = msisdn_hash
+
+            cursor.close()
+
+            return user

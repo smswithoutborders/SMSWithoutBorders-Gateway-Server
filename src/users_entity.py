@@ -11,9 +11,7 @@ from SwobBackendPublisher.exceptions import (
     InvalidDataError
 )
 
-
 class UsersEntity:
-
     def __init__(self, mysql_host, mysql_user, mysql_password, mysql_database):
         self.MYSQL_HOST=mysql_host
         self.MYSQL_USER=mysql_user

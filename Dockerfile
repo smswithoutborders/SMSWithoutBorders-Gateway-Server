@@ -1,8 +1,8 @@
 FROM python:3.10
 
-WORKDIR /gateway_server
-
 RUN apt update && apt install -y apache2 apache2-dev python3-pip
+
+WORKDIR /gateway_server
 
 # COPY ["src", "apache.wsgi", "requirements.txt", "/gateway_server"]
 

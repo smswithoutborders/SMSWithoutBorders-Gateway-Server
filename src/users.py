@@ -49,6 +49,7 @@ class Users(User):
 
         self.userEntity = userEntity
         self.connection = mysql.connector.connect(
+                host=self.userEntity.MYSQL_HOST,
                 user=self.userEntity.MYSQL_USER,
                 database=self.userEntity.MYSQL_DATABASE,
                 password=self.userEntity.MYSQL_PASSWORD)

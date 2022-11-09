@@ -1,0 +1,24 @@
+version: '3.1'
+
+services:
+  mysql:
+    image: mariadb:10.5
+    ports:
+      - "3306:3306"
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_HOST: 127.0.0.1
+
+  gateway_server:
+    depends_on: 
+      - mysql
+    ports:
+      - "8000:5000"
+    build: .
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_GS_DATABASE=${MYSQL_GS_DATABASE}

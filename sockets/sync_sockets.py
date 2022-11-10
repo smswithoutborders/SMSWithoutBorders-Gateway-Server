@@ -10,8 +10,7 @@ import ssl
 import logging
 import json
 
-import ip_grap
-
+import src.ip_grap
 
 logging.basicConfig(level='DEBUG')
 

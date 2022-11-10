@@ -6,11 +6,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync
-from sockets import ip_grap
-
+from src import sync, ip_grap
 from src.users import Users
-
 from src.users_entity import UsersEntity
 
 import os
@@ -76,9 +73,6 @@ def get_sync_url(user_id: str):
     """
     try:
         port = app.config["SOCK_PORT"]
-
-
-        # TODO:  does not work well with docker
         host = socket_sessions.get_host(app.config["HOST"])
 
         sockets_url = sync.get_sockets_sessions_url(user_id=user_id, host=host, port=SOCK_PORT)
@@ -185,22 +179,4 @@ def incoming_sms_routing(platform):
         if not 'text' in data:
             return 'missing text', 400
 
-        text = data["text"]
-        user_msisdn = data["MSISDN"]
-
-        # TODO: consume the lib at this point
-        token, user_msisdn_hash = None
-
-        user = user(msisdn=user_msisdn_hash)
-        shared_key = user.shared_key
-
-        decrypted_text = AES.decrypt(data=text, shared_key=shared_key)
-
-        try:
-            publisher.publish(text=text, token=token)
-        except Exception as error:
-            logging.exception(error)
-
-            return '', 400
-        else:
-            return 'published!', 200
+    return '', 200

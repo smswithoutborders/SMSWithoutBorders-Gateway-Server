@@ -1,5 +1,5 @@
 import os
-import src.ip_grap
+from sockets import ip_grap
 import logging
 
 import secrets

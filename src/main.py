@@ -6,7 +6,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, ip_grap
+from src import sync
+from sockets import ip_grap
 from src.users import Users
 from src.users_entity import UsersEntity
 

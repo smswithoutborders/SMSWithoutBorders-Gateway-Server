@@ -22,26 +22,32 @@ from SwobBackendPublisher import MySQL, Lib
 
 __api_version_number = 2
 
-RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
-
 HOST = os.environ.get("HOST")
 PORT = os.environ.get("PORT")
 SOCK_PORT = os.environ.get("SOCK_PORT")
+RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
 
+
+# Required for BE-Publisher Lib
+MYSQL_BE_HOST="localhost" if not os.environ.get("MYSQL_BE_HOST") else os.environ.get("MYSQL_BE_HOST")
+MYSQL_BE_USER="root" if not os.environ.get("MYSQL_BE_USER") else os.environ.get("MYSQL_BE_USER")
+MYSQL_BE_PASSWORD= os.environ["MYSQL_BE_PASSWORD"]
+MYSQL_BE_DATABASE= os.environ["MYSQL_BE_DATABASE"]
+
+# Required for storing user encryption information
 MYSQL_HOST="localhost" if not os.environ.get("MYSQL_HOST") else os.environ.get("MYSQL_HOST")
 MYSQL_USER="root" if not os.environ.get("MYSQL_USER") else os.environ.get("MYSQL_USER")
 MYSQL_PASSWORD= os.environ["MYSQL_PASSWORD"]
 MYSQL_DATABASE= os.environ["MYSQL_DATABASE"]
-MYSQL_GATEWAY_SERVER_DATABASE= os.environ["MYSQL_GS_DATABASE"]
 
 """
 For BE-Pub lib
 """
 usersBEPUB = UsersEntity(
-        mysql_host= MYSQL_HOST,
-        mysql_user = MYSQL_USER,
-        mysql_password = MYSQL_PASSWORD,
-        mysql_database = MYSQL_DATABASE)
+        mysql_host= MYSQL_BE_HOST,
+        mysql_user = MYSQL_BE_USER,
+        mysql_password = MYSQL_BE_PASSWORD,
+        mysql_database = MYSQL_BE_DATABASE)
 
 users_be_pub = Lib(usersBEPUB.db)
 
@@ -49,7 +55,7 @@ usersEntity = UsersEntity(
         mysql_host= MYSQL_HOST,
         mysql_user = MYSQL_USER,
         mysql_password = MYSQL_PASSWORD,
-        mysql_database = MYSQL_GATEWAY_SERVER_DATABASE)
+        mysql_database = MYSQL_DATABASE)
 
 users = Users(usersEntity)
 
@@ -191,7 +197,8 @@ def incoming_sms_routing(platform):
         # TODO: consume the lib at this point
         token, user_msisdn_hash = None
 
-        user = user(msisdn=user_msisdn_hash)
+        user = users.find(msisdn_hash = user_msisdn_hash)
+
         shared_key = user.shared_key
 
         decrypted_text = AES.decrypt(data=text, shared_key=shared_key)

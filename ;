@@ -257,16 +257,17 @@ def main() -> None:
     """
     """
     PORT = os.environ.get("PORT")
-
+<<<<<<< HEAD
     HOST = os.environ.get("HOST")
-
-    GATEWAY_SERVER_HOST = os.environ.get("GATEWAY_SERVER_HOST")
+    SOCK_PORT = os.environ.get("SOCK_PORT") 
+    SOCK_HOST = os.environ.get("SOCK_HOST") 
+=======
+    HOST = os.environ.get("HOST") 
 
     GATEWAY_SERVER_PORT = os.environ.get("GATEWAY_SERVER_PORT")
-
     try:
-        socket = SyncSockets(host=HOST, port=PORT, 
-                gateway_server_port=GATEWAY_SERVER_PORT)
+        socket = SyncSockets(host=host, 
+                port=port, gateway_server_port=GATEWAY_SERVER_PORT)
 
     except Exception as error:
         logging.exception(error)

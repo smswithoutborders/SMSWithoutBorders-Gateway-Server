@@ -15,7 +15,7 @@ from src import ip_grap
 
 logging.basicConfig(level='DEBUG')
 
-class SocketSessions:
+class SyncSockets:
     """
     """
     __persistent_connections = {}
@@ -261,7 +261,7 @@ def main() -> None:
 
     host = get_host(SOCK_HOST)
     try:
-        socket = SocketSessions(host=host, 
+        socket = SyncSockets(host=host, 
                 port=SOCK_PORT, gateway_server_port=PORT)
 
     except Exception as error:

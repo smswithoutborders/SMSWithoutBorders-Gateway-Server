@@ -15,10 +15,17 @@ services:
     depends_on: 
       - mysql
     ports:
-      - "8000:5000"
+      - "15000:5000"
     build: .
     environment:
       - MYSQL_HOST=mysql
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_GS_DATABASE=${MYSQL_GS_DATABASE}
+
+    sync_sockets:
+      depends_on:
+        - gateway_server
+      ports:
+        - "15001:15001"
+      build: .

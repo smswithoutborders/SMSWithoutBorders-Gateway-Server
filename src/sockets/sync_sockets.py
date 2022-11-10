@@ -76,6 +76,8 @@ class SyncSockets:
         read for prod: 
             https://websockets.readthedocs.io/en/stable/reference/server.html
         """
+        logging.debug("[*] HOST %s", self.host)
+        logging.debug("[*] PORT %s", self.port)
         async with websockets.serve(
                 ws_handler = self.active_sessions, 
                 host = self.host, 

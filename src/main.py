@@ -74,6 +74,9 @@ def get_sync_url(user_id: str):
     """
     try:
         port = app.config["SOCK_PORT"]
+
+
+        # TODO:  does not work well with docker
         host = socket_sessions.get_host(app.config["HOST"])
 
         sockets_url = sync.get_sockets_sessions_url(user_id=user_id, host=host, port=SOCK_PORT)

@@ -30,13 +30,14 @@ class SyncSockets:
         def get_socket(self):
             return self.websocket
 
-    def __init__(self, host: str, port: str, gateway_server_port: str):
+    def __init__(self, host: str, port: str, gateway_server_host: str, gateway_server_port: str):
         """
         """
         self.host = host
         self.port = port
 
         self.gateway_server_port = gateway_server_port
+        self.gateway_server_host = gateway_server_host
 
         self.refresh_limit = 3
         self.time_to_refresh = 10
@@ -80,8 +81,7 @@ class SyncSockets:
         async with websockets.serve(
                 ws_handler = self.active_sessions, 
                 host = self.host, 
-                port = self.port,
-                origins = [self.host]):
+                port = self.port):
 
             await asyncio.Future()
     
@@ -92,7 +92,7 @@ class SyncSockets:
         """
         session_id = uuid.uuid4().hex
 
-        sessions_protocol = f"%s://{self.host}:{self.gateway_server_port}/" \
+        sessions_protocol = f"%s://{self.gateway_server_host}:{self.gateway_server_port}/" \
                 f"v2/sync/users/{user_id}/sessions/{session_id}/"
 
         api_handshake_url = sessions_protocol % ( self.gateway_server_protocol)
@@ -257,13 +257,15 @@ def main() -> None:
     """
     """
     PORT = os.environ.get("PORT")
+    HOST = os.environ.get("HOST")
     SOCK_PORT = os.environ.get("SOCK_PORT") 
     SOCK_HOST = os.environ.get("SOCK_HOST") 
 
-    host = get_host(SOCK_HOST)
+    # host = get_host(SOCK_HOST)
+    host = SOCK_HOST
     try:
         socket = SyncSockets(host=host, 
-                port=SOCK_PORT, gateway_server_port=PORT)
+                port=SOCK_PORT, gateway_server_port=PORT, gateway_server_host=HOST)
 
     except Exception as error:
         logging.exception(error)

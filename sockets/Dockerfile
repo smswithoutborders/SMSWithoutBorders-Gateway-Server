@@ -8,6 +8,6 @@ COPY . .
 
 RUN pip install -r requirements.txt
 
-EXPOSE 15001
-
 CMD ["python3", "sync_sockets.py"]
+
+EXPOSE 15001

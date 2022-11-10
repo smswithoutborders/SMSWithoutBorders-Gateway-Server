@@ -15,7 +15,7 @@ services:
     depends_on: 
       - mysql
     ports:
-      - "15000:5000" # temp till mod_wsgi is implemented
+      - "5000:5000" # temp till mod_wsgi is implemented
     build: .
     environment:
       - MYSQL_HOST=mysql
@@ -30,6 +30,7 @@ services:
       - "15001:15001"
     build: ./sockets/
     environment:
-      PORT: 15000
-      SOCK_PORT: 15001
-      SOCK_HOST: 127.0.0.1
+      HOST: ${HOST}
+      PORT: ${PORT}
+      SOCK_PORT: ${SOCK_PORT}
+      SOCK_HOST: ${SOCK_HOST}

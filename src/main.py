@@ -6,7 +6,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, ip_grap, socket_sessions
+from src import sync
+from src.sockets import sync_sockets, ip_grap
 from src.users import Users
 from src.users_entity import UsersEntity
 
@@ -65,9 +66,6 @@ CORS(
     supports_credentials=True,
 )
 
-"""
-@app.route('/sms/platform/<platform>', methods=['POST'])
-"""
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
@@ -147,9 +145,11 @@ def get_users_platforms(user_id: str, session_id: str):
                         hashingAlgorithm=hashingAlgorithm)
 
                 #TODO: customize exception just in case issue with encrypting for user
+
             except Exception as error:
                 logging.exception(error)
                 return '', 500
+
             else:
                 return jsonify({
                     "shared_key":encrypted_shared_key.decode('utf-8'),
@@ -160,3 +160,10 @@ def get_users_platforms(user_id: str, session_id: str):
         except Exception as error:
             logging.exception(error)
             return '', 500 
+
+
+@app.route('/sms/platform/<platform>', methods=['POST'])
+def incoming_sms_routing(platform):
+    """
+    """
+    return '', 200

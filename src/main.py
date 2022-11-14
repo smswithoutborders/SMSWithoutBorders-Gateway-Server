@@ -19,6 +19,7 @@ import logging
 import threading
 
 from SwobBackendPublisher import MySQL, Lib
+from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
 
 __api_version_number = 2
 
@@ -65,6 +66,8 @@ usersEntity = UsersEntity(
         mysql_database = MYSQL_DATABASE)
 
 users = Users(usersEntity)
+
+BEPubLib = Lib(users_be_pub.db)
 
 try:
     users.create_database_and_tables__()
@@ -137,19 +140,25 @@ def get_users_platforms(user_id: str, session_id: str):
 
         try:
 
-            """
-            decrypted_password = rsa.decrypt(data['password'], 
-                    decryption_hash=decryption_hash, hashingAlgorithm=hashingAlgorithm)
-            """
-            decrypted_password = None
-            
+            user_password = data['password']
             user_public_key = data['public_key']
-            user_msisdn_hash = None
+            user_id = data['user_id']
+
+            decrypted_password = rsa.decrypt(user_password, 
+                    decryption_hash=decryption_hash, hashingAlgorithm=hashingAlgorithm)
+            
+            try:
+                user_msisdn_hash = BEPubLib.get_phone_number_hash_from_id(user_id=user_id, 
+                        password=password)
+
+            except (UserDoesNotExist, DuplicateUsersExist) as error:
+                logging.exception(error)
+                return '', 500
 
             user = users.find(msisdn_hash=user_msisdn_hash)
-            user.id = user_id
             user_shared_key = sync.generate_shared_key()
 
+            user.id = user_id
             user.public_key = user_public_key
             user.msisdn_hash = user_msisdn_hash
             user.shared_key = user_shared_key

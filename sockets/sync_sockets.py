@@ -244,15 +244,18 @@ class SyncSockets:
                     await client_socket_connection.close(reason='')
 
 
+'''
 def get_host(host: str) -> str:
     """
     """
     if not host:
         host = "127.0.0.1"
 
-    host = ip_grap.get_private_ip() if host == "0.0.0.0" else host
+    else:
+        host = ip_grap.get_private_ip() if host == "0.0.0.0" else host
 
     return host
+'''
 
 
 def main() -> None:
@@ -260,6 +263,7 @@ def main() -> None:
     """
     PORT = os.environ.get("PORT")
     HOST = os.environ.get("HOST")
+    HOST = "127.0.0.1" if not HOST else HOST
 
     GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
     GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]

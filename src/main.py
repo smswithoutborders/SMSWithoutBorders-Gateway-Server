@@ -29,14 +29,21 @@ RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
 
 
 # Required for BE-Publisher Lib
-MYSQL_BE_HOST="localhost" if not os.environ.get("MYSQL_BE_HOST") else os.environ.get("MYSQL_BE_HOST")
-MYSQL_BE_USER="root" if not os.environ.get("MYSQL_BE_USER") else os.environ.get("MYSQL_BE_USER")
-MYSQL_BE_PASSWORD= os.environ["MYSQL_BE_PASSWORD"]
-MYSQL_BE_DATABASE= os.environ["MYSQL_BE_DATABASE"]
+MYSQL_BE_HOST=os.environ["MYSQL_HOST"] \
+        if not os.environ.get("MYSQL_BE_HOST") else os.environ.get("MYSQL_BE_HOST")
+
+MYSQL_BE_USER=os.environ["MYSQL_USER"] \
+        if not os.environ.get("MYSQL_BE_USER") else os.environ.get("MYSQL_BE_USER")
+
+MYSQL_BE_PASSWORD=os.environ["MYSQL_PASSWORD"] \
+        if not os.environ.get("MYSQL_BE_PASSWORD") else os.environ.get("MYSQL_BE_PASSWORD")
+MYSQL_BE_DATABASE= os.environ["MYSQL_DATABASE"] \
+        if not os.environ.get("MYSQL_BE_DATABASE") else os.environ.get("MYSQL_BE_DATABASE")
 
 # Required for storing user encryption information
-MYSQL_HOST="localhost" if not os.environ.get("MYSQL_HOST") else os.environ.get("MYSQL_HOST")
+MYSQL_HOST="127.0.0.1" if not os.environ.get("MYSQL_HOST") else os.environ.get("MYSQL_HOST")
 MYSQL_USER="root" if not os.environ.get("MYSQL_USER") else os.environ.get("MYSQL_USER")
+
 MYSQL_PASSWORD= os.environ["MYSQL_PASSWORD"]
 MYSQL_DATABASE= os.environ["MYSQL_DATABASE"]
 
@@ -83,10 +90,10 @@ def get_sync_url(user_id: str):
     try:
         port = app.config["SOCK_PORT"]
 
-
+        # print(dir(app.env["HOST"]))
         # TODO:  does not work well with docker
-        host = socket_sessions.get_host(app.config["HOST"])
-
+        # host = socket_sessions.get_host(app.config["HOST"])
+        host = request.host.split(':')[0]
         sockets_url = sync.get_sockets_sessions_url(user_id=user_id, host=host, port=SOCK_PORT)
     except Exception as error:
         app.logger.exception(error)
@@ -94,6 +101,13 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
+def logging_after_request(response):
+    # in here is where we transmit to the logger trace
+    # logging.debug(response)
+    logging.debug(response.response)
+    return response
+
+app.after_request(logging_after_request)
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])
 def get_users_platforms(user_id: str, session_id: str):

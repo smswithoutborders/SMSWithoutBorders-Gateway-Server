@@ -14,16 +14,13 @@ echo "public_key - $public_key"
 user_id=0000
 echo "user_id - $user_id"
 
-password=$1
+password="testpassword"
 echo "password - $password"
 
 echo "Starting handshake..."
-curl -s -X POST '127.0.0.1:5000/v2/sync/users/0000/sessions/1111/' \
-	-d "{\"public_key\":\"$public_key\", \"password\":\"$password\"}" \
-	-H "Content-Type: application/json" | \
-	jq -cr '.verification_url' | \
-	xargs -0 -I{} verification_url={}
-	echo "$password" | \
+verification_url="http://127.0.0.1:5000/v2/sync/users/dead3662-5f78-11ed-b8e7-6d06c3aaf3c6/sessions/000/"
+
+echo "$password" | \
 	tr -d '\n' | \
 	openssl pkeyutl -encrypt -inkey useless_public_key.pub -pubin \
 	-pkeyopt rsa_padding_mode:oaep \
@@ -32,7 +29,8 @@ curl -s -X POST '127.0.0.1:5000/v2/sync/users/0000/sessions/1111/' \
 	base64 -w 0 | \
 	xargs -0 -I{} curl -s -X POST \
 	-H "Content-Type: application/json" \
-	-d '{"password":"{}"}' "http://127.0.0.1:5000$verification_url" | \
+	-d "{\"public_key\":\"$public_key\", \"password\":\"{}\"}" \
+	"$verification_url" | \
 	jq -cr '.shared_key' | \
 	base64 --decode | \
 	openssl pkeyutl -decrypt -inkey $private_key_filepath \

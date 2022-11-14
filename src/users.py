@@ -12,7 +12,7 @@ from mysql.connector import errorcode
 
 class User:
 
-    user_id = None
+    id = None
 
     public_key = None
 
@@ -28,9 +28,9 @@ class Users(User):
 
     TABLES[TABLE_NAME] = (
     f"CREATE TABLE `{TABLE_NAME}` ("
-    "  `msisdn_hash` varchar(14) NOT NULL,"
-    "  `shared_key` varchar(16) NOT NULL,"
-    "  `public_key` varchar(16) NOT NULL,"
+    "  `msisdn_hash` varchar(256) NOT NULL,"
+    "  `shared_key` text NOT NULL,"
+    "  `public_key` text NOT NULL,"
     "  `date` date DEFAULT NULL,"
     "  PRIMARY KEY (`msisdn_hash`)"
     ") ENGINE=InnoDB")
@@ -123,20 +123,22 @@ class Users(User):
         insert_query = (
                 f"INSERT INTO {self.TABLE_NAME} (public_key, shared_key, msisdn_hash) "
                 "VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE "
-                "public_key=%s, shared_key=%s WHERE msisdn_hash=%s")
+                "public_key = VALUES(public_key), shared_key = VALUES(shared_key), "
+                "msisdn_hash = VALUES(msisdn_hash)")
 
-        cursor.execute(insert_query, (
-            user.public_key,
-            user.shared_key,
-            user.msisdn_hash,
+        try:
+            cursor.execute(insert_query, (
+                user.public_key,
+                user.shared_key,
+                user.msisdn_hash, ))
 
-            user.public_key,
-            user.shared_key,
-            user.msisdn_hash))
+            self.connection.commit()
 
-        self.connection.commit()
+        except Exception as error:
+            raise error
 
-        cursor.close()
+        finally:
+            cursor.close()
 
     def find(self, msisdn_hash: str) -> None:
         """
@@ -144,18 +146,21 @@ class Users(User):
         if not msisdn_hash:
             return User()
 
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(buffered=True, dictionary=True)
         query = (
                 "SELECT public_key, shared_key, msisdn_hash "
                 f"FROM {self.TABLE_NAME} WHERE msisdn_hash = %s")
-        cursor.execute(query, (msisdn_hash))
-
-        for (public_key, shared_key, msisdn_hash) in cursor:
+        try:
+            cursor.execute(query, (msisdn_hash, ))
+        except Exception as error:
+            raise error
+        else:
             user = User()
-            user.public_key = public_key
-            user.shared_key = shared_key
-            user.msisdn_hash = msisdn_hash
+            for row in cursor:
+                user.public_key = row['public_key']
+                user.shared_key = row['shared_key']
+                user.msisdn_hash = row['msisdn_hash']
 
-            cursor.close()
+                cursor.close()
 
             return user

@@ -6,7 +6,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync
+from src import sync, rsa, aes
 from sockets import ip_grap
 
 from src.users import Users
@@ -17,6 +17,7 @@ import os
 import json
 import logging
 import threading
+import base64
 
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
@@ -57,7 +58,7 @@ usersBEPUB = UsersEntity(
         mysql_password = MYSQL_BE_PASSWORD,
         mysql_database = MYSQL_BE_DATABASE)
 
-users_be_pub = Lib(usersBEPUB.db)
+BEPubLib = Lib(usersBEPUB.db)
 
 usersEntity = UsersEntity(
         mysql_host= MYSQL_HOST,
@@ -66,8 +67,6 @@ usersEntity = UsersEntity(
         mysql_database = MYSQL_DATABASE)
 
 users = Users(usersEntity)
-
-BEPubLib = Lib(users_be_pub.db)
 
 try:
     users.create_database_and_tables__()
@@ -142,21 +141,29 @@ def get_users_platforms(user_id: str, session_id: str):
 
             user_password = data['password']
             user_public_key = data['public_key']
-            user_id = data['user_id']
 
-            decrypted_password = rsa.decrypt(user_password, 
-                    decryption_hash=decryption_hash, hashingAlgorithm=hashingAlgorithm)
-            
+            decrypted_password = rsa.SecurityRSA.decrypt(user_password, 
+                    private_key_filepath=RSA_PR_KEY,
+                    mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)
+
+            user_msisdn_hash = None
             try:
                 user_msisdn_hash = BEPubLib.get_phone_number_hash_from_id(user_id=user_id, 
-                        password=password)
+                        password=str(decrypted_password, 'utf-8'))
 
             except (UserDoesNotExist, DuplicateUsersExist) as error:
                 logging.exception(error)
-                return '', 500
+                return '', 403
 
-            user = users.find(msisdn_hash=user_msisdn_hash)
+            user_msisdn_hash = user_msisdn_hash['phoneNumber_hash']
+            try:
+                user = users.find(msisdn_hash=user_msisdn_hash)
+            except Exception as error:
+                logging.exception(error)
+                return '', 500 
+
             user_shared_key = sync.generate_shared_key()
+            print("shared_key:", user_shared_key)
 
             user.id = user_id
             user.public_key = user_public_key
@@ -170,10 +177,10 @@ def get_users_platforms(user_id: str, session_id: str):
                 return '', 500
 
             try:
-                user_platforms = users.get_platforms(user)
+                user_platforms = BEPubLib.get_user_platforms_from_id(user_id=user_id)
 
-                encrypted_shared_key = rsa.encrypt_with_key(
-                        data=shared_key, 
+                encrypted_shared_key = rsa.SecurityRSA.encrypt_with_key(
+                        data=user_shared_key, 
                         public_key=user_public_key,
                         mgf1ParameterSpec=mgf1ParameterSpec, 
                         hashingAlgorithm=hashingAlgorithm)
@@ -185,8 +192,9 @@ def get_users_platforms(user_id: str, session_id: str):
                 return '', 500
 
             else:
+                b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
                 return jsonify({
-                    "shared_key":encrypted_shared_key.decode('utf-8'),
+                    "shared_key": str(b64_encoded_shared_key, 'utf-8'),
                     "user_platforms":user_platforms}), 200
 
             # TODO if error decrypting should have 500
@@ -224,7 +232,7 @@ def incoming_sms_routing(platform):
 
         shared_key = user.shared_key
 
-        decrypted_text = AES.decrypt(data=text, shared_key=shared_key)
+        decrypted_text = aes.AESCipher.decrypt(data=text, shared_key=shared_key)
 
         try:
             publisher.publish(text=text, token=token)

@@ -12,8 +12,9 @@ mysqlclient==2.1.1
 peewee==3.15.1
 protobuf==4.21.9
 pycryptodome==3.14.1
+pycryptodomex==3.15.0
 six==1.16.0
-SwobBackendPublisher @ git+https://github.com/smswithoutborders/SMSWithoutBorders-BE-Publisher.git@2719fc05a2baab09bff7b56448ace9da368dd420
+SwobBackendPublisher @ git+https://github.com/smswithoutborders/SMSWithoutBorders-BE-Publisher.git@b9da2fefab13b65d69cb486c7bbd37c69d78bdd8
 websocket==0.2.1
 websockets==10.4
 Werkzeug==2.2.2

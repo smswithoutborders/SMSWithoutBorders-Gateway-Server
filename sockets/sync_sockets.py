@@ -243,6 +243,7 @@ class SyncSockets:
                     logging.exception(error)
                     await client_socket_connection.close(reason='')
 
+
 def get_host(host: str) -> str:
     """
     """
@@ -253,20 +254,20 @@ def get_host(host: str) -> str:
 
     return host
 
+
 def main() -> None:
     """
     """
     PORT = os.environ.get("PORT")
-
     HOST = os.environ.get("HOST")
 
-    GATEWAY_SERVER_HOST = os.environ.get("GATEWAY_SERVER_HOST")
-
-    GATEWAY_SERVER_PORT = os.environ.get("GATEWAY_SERVER_PORT")
+    GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
+    GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
 
     try:
         socket = SyncSockets(host=HOST, port=PORT, 
-                gateway_server_port=GATEWAY_SERVER_PORT)
+                gateway_server_port=GATEWAY_SERVER_PORT, 
+                gateway_server_host=GATEWAY_SERVER_HOST)
 
     except Exception as error:
         logging.exception(error)

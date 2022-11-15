@@ -25,7 +25,6 @@ from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExis
 __api_version_number = 2
 
 HOST = os.environ.get("HOST")
-PORT = os.environ.get("PORT")
 SOCK_PORT = os.environ.get("SOCK_PORT")
 RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
 

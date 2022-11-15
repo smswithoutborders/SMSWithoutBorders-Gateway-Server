@@ -163,7 +163,6 @@ def get_users_platforms(user_id: str, session_id: str):
                 return '', 500 
 
             user_shared_key = sync.generate_shared_key()
-            print("shared_key:", user_shared_key)
 
             user.id = user_id
             user.public_key = user_public_key

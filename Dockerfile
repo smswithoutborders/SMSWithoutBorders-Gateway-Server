@@ -12,4 +12,5 @@ RUN pip install -r requirements.txt
 
 EXPOSE 5000
 
-CMD ["flask", "--app", "src/main", "run"]
+# CMD ["flask", "--app", "src/main", "run"]
+CMD mod_wsgi-express start-server wsgi_script.py --user www-data --group www-data --port '${PORT}' --ssl-certificate-file '${SSL_CERTIFICATE}' --ssl-certificate-key-file '${SSL_KEY}' --ssl-certificate-chain-file '${SSL_PEM}' --https-only --server-name '${HOST}' --https-port '${SSL_PORT}'

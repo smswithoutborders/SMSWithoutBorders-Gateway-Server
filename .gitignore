@@ -12,3 +12,4 @@ tmp/*
 *.pem
 **.pem
 data
+*.sh

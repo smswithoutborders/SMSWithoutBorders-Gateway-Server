@@ -8,25 +8,24 @@ services:
     restart: on-failure
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?err}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_HOST: 127.0.0.1
     healthcheck:
-      test: "mysql -u${MYSQL_USER:?err} -p${MYSQL_PASSWORD:?err} -e \"show databases\""
+      test: "mysql -u${MYSQL_USER} -p${MYSQL_PASSWORD:?err} -e \"show databases\""
       interval: 1s
       retries: 120
 
   gateway_server:
     depends_on: 
-      mysql:
-        condition: service_healthy
+      - mysql
     ports:
-      - "${SSL_PORT:?err}:${SSL_PORT:?err}" # temp till mod_wsgi is implemented
+      - "${SSL_PORT}:{SSL_PORT}" # temp till mod_wsgi is implemented
     build: .
     environment:
       - MYSQL_HOST=mysql
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:?err}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:?err}
-      - MYSQL_GS_DATABASE=${MYSQL_GS_DATABASE:?err}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_GS_DATABASE=${MYSQL_GS_DATABASE}
 
 #  sync_sockets:
 #    depends_on:

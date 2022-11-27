@@ -30,11 +30,13 @@ class SyncSockets:
         def get_socket(self):
             return self.websocket
 
-    def __init__(self, host: str, port: str, gateway_server_host: str, gateway_server_port: str):
+    def __init__(self, host: str, port: str, 
+            gateway_server_host: str, gateway_server_port: str, ssl_context = None):
         """
         """
         self.host = host
         self.port = port
+        self.ssl_context = ssl_context
 
         self.gateway_server_port = gateway_server_port
         self.gateway_server_host = gateway_server_host
@@ -48,30 +50,6 @@ class SyncSockets:
         self.__valid_sessions = {}
 
     async def construct_websocket_object(self):
-        """Create the start connection url for the socket.
-        Checks if SSL required files are present, then connect to wss.
-        """
-        """
-        ssl_crt_filepath = __conf['websocket_ssl']['crt']
-        ssl_key_filepath = __conf['websocket_ssl']['key']
-        ssl_pem_filepath = __conf['websocket_ssl']['pem']
-
-        if(
-                os.path.exists(ssl_crt_filepath) and 
-                os.path.exists(ssl_key_filepath) and 
-                os.path.exists(ssl_pem_filepath)):
-
-            logging.debug("websocket going secured with WSS")
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ssl_context.load_cert_chain(certfile=ssl_crt_filepath, 
-                    keyfile=ssl_key_filepath)
-
-            server_ip = __conf['websocket_ssl']['host']
-            logging.debug("server %s -> port %s", server_ip, server_port)
-
-            return websockets.serve(active_sessions, server_ip, server_port, ssl=ssl_context)
-        """
-
         """
         read for prod: 
             https://websockets.readthedocs.io/en/stable/reference/server.html
@@ -81,7 +59,8 @@ class SyncSockets:
         async with websockets.serve(
                 ws_handler = self.active_sessions, 
                 host = self.host, 
-                port = self.port):
+                port = self.port,
+                ssl= self.ssl_context):
 
             await asyncio.Future()
     
@@ -244,7 +223,6 @@ class SyncSockets:
                     await client_socket_connection.close(reason='')
 
 
-'''
 def get_host(host: str) -> str:
     """
     """
@@ -255,19 +233,33 @@ def get_host(host: str) -> str:
         host = ip_grap.get_private_ip() if host == "0.0.0.0" else host
 
     return host
-'''
 
-
-def main() -> None:
+def main_tls(ssl_key_filepath: str, ssl_crt_filepath: str):
     """
     """
-    PORT = os.environ.get("PORT")
-    HOST = os.environ.get("HOST")
-    HOST = "127.0.0.1" if not HOST else HOST
+    logging.info("WSS protocol!")
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(certfile=ssl_crt_filepath,
+            keyfile=ssl_key_filepath)
 
-    GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
-    GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
+    try:
+        socket = SyncSockets(
+                host=HOST, 
+                port=PORT, 
+                gateway_server_port=GATEWAY_SERVER_PORT, 
+                gateway_server_host=GATEWAY_SERVER_HOST,
+                ssl_context=ssl_context)
 
+    except Exception as error:
+        logging.exception(error)
+    else:
+        asyncio.run(socket.construct_websocket_object())
+
+
+def main_no_tls() -> None:
+    """
+    """
+    logging.info("WS protocol!")
     try:
         socket = SyncSockets(host=HOST, port=PORT, 
                 gateway_server_port=GATEWAY_SERVER_PORT, 
@@ -277,6 +269,27 @@ def main() -> None:
         logging.exception(error)
     else:
         asyncio.run(socket.construct_websocket_object())
+
+def main() -> None:
+    """
+    """
+    global PORT, HOST, GATEWAY_SERVER_HOST, GATEWAY_SERVER_PORT
+
+    PORT = os.environ.get("PORT")
+    HOST = os.environ.get("HOST")
+    HOST = "127.0.0.1" if not HOST else HOST
+
+    GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
+    GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
+
+    SSL_KEY_FILEPATH = os.environ.get("SSL_KEY")
+    SSL_CRT_FILEPATH = os.environ.get("SSL_CRT")
+
+    if(SSL_KEY_FILEPATH and SSL_CRT_FILEPATH):
+        main_tls(ssl_key_filepath=SSL_KEY_FILEPATH, 
+                ssl_crt_filepath=SSL_CRT_FILEPATH)
+    else:
+        main_no_tls()
 
 
 if __name__ == "__main__":

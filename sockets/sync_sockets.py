@@ -261,7 +261,9 @@ def main_no_tls() -> None:
     """
     logging.info("WS protocol!")
     try:
-        socket = SyncSockets(host=HOST, port=PORT, 
+        socket = SyncSockets(
+                host=HOST, 
+                port=PORT, 
                 gateway_server_port=GATEWAY_SERVER_PORT, 
                 gateway_server_host=GATEWAY_SERVER_HOST)
 
@@ -277,13 +279,17 @@ def main() -> None:
 
     PORT = os.environ.get("PORT")
     HOST = os.environ.get("HOST")
-    HOST = "127.0.0.1" if not HOST else HOST
+    # HOST = "127.0.0.1" if not HOST else HOST
+    HOST = "127.0.0.1" if not HOST else "0.0.0.0"
 
     GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
     GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
 
     SSL_KEY_FILEPATH = os.environ.get("SSL_KEY")
     SSL_CRT_FILEPATH = os.environ.get("SSL_CRT")
+
+    logging.debug("SSL_KEY_FILEPATH: %s", SSL_KEY_FILEPATH)
+    logging.debug("SSL_CRT_FILEPATH: %s", SSL_CRT_FILEPATH)
 
     if(SSL_KEY_FILEPATH and SSL_CRT_FILEPATH):
         main_tls(ssl_key_filepath=SSL_KEY_FILEPATH, 

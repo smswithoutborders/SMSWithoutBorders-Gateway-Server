@@ -234,13 +234,15 @@ def get_host(host: str) -> str:
 
     return host
 
-def main_tls(ssl_key_filepath: str, ssl_crt_filepath: str):
+def main_tls(ssl_key_filepath: str, ssl_crt_filepath: str, ssl_pem_filepath: str):
     """
     """
     logging.info("WSS protocol!")
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ssl_context.load_cert_chain(certfile=ssl_crt_filepath,
             keyfile=ssl_key_filepath)
+    ssl_context.load_verify_locations(ssl_pem_filepath)
 
     try:
         socket = SyncSockets(
@@ -287,13 +289,16 @@ def main() -> None:
 
     SSL_KEY_FILEPATH = os.environ.get("SSL_KEY")
     SSL_CRT_FILEPATH = os.environ.get("SSL_CRT")
+    SSL_PEM_FILEPATH = os.environ.get("SSL_PEM")
 
     logging.debug("SSL_KEY_FILEPATH: %s", SSL_KEY_FILEPATH)
     logging.debug("SSL_CRT_FILEPATH: %s", SSL_CRT_FILEPATH)
+    logging.debug("SSL_PEM_FILEPATH: %s", SSL_PEM_FILEPATH)
 
-    if(SSL_KEY_FILEPATH and SSL_CRT_FILEPATH):
+    if(SSL_KEY_FILEPATH and SSL_CRT_FILEPATH and SSL_PEM_FILEPATH):
         main_tls(ssl_key_filepath=SSL_KEY_FILEPATH, 
-                ssl_crt_filepath=SSL_CRT_FILEPATH)
+                ssl_crt_filepath=SSL_CRT_FILEPATH,
+                ssl_pem_filepath=SSL_PEM_FILEPATH)
     else:
         main_no_tls()
 

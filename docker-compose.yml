@@ -9,7 +9,7 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?err}
-      MYSQL_HOST: 127.0.0.1
+      # MYSQL_HOST: 127.0.0.1
     healthcheck:
       test: "mysql -u${MYSQL_USER:?err} -p${MYSQL_PASSWORD:?err} -e \"show databases\""
       interval: 1s

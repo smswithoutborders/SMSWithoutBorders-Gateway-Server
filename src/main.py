@@ -171,6 +171,8 @@ def get_users_platforms(user_id: str, session_id: str):
             user.public_key = user_public_key
             user.msisdn_hash = user_msisdn_hash
             user.shared_key = user_shared_key
+            user.mgf1ParameterSpec = mgf1ParameterSpec 
+            user.hashingAlgorithm = hashingAlgorithm
 
             try:
                 users.commit(user)

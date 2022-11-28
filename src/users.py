@@ -20,6 +20,10 @@ class User:
 
     shared_key = None
 
+    mgf1ParameterSpec = None
+ 
+    hashingAlgorithm = None
+
 
 class Users(User):
     TABLES = {}
@@ -31,7 +35,9 @@ class Users(User):
     "  `msisdn_hash` varchar(256) NOT NULL,"
     "  `shared_key` text NOT NULL,"
     "  `public_key` text NOT NULL,"
-    "  `date` date DEFAULT NULL,"
+    "  `mgf1ParameterSpec` text NOT NULL,"
+    "  `hashingAlgorithm` text NOT NULL,"
+    "  `date` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
     "  PRIMARY KEY (`msisdn_hash`)"
     ") ENGINE=InnoDB")
 
@@ -123,16 +129,21 @@ class Users(User):
         cursor = self.connection.cursor()
 
         insert_query = (
-                f"INSERT INTO {self.TABLE_NAME} (public_key, shared_key, msisdn_hash) "
-                "VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE "
-                "public_key = VALUES(public_key), shared_key = VALUES(shared_key), "
-                "msisdn_hash = VALUES(msisdn_hash)")
+                f"INSERT INTO {self.TABLE_NAME} "
+                "(public_key, shared_key, msisdn_hash, mgf1ParameterSpec, hashingAlgorithm) "
+                "VALUES (%s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+                "public_key = VALUES(public_key), "
+                "shared_key = VALUES(shared_key), "
+                "mgf1ParameterSpec = VALUES(mgf1ParameterSpec), "
+                "hashingAlgorithm = VALUES(hashingAlgorithm)")
 
         try:
             cursor.execute(insert_query, (
                 user.public_key,
                 user.shared_key,
-                user.msisdn_hash, ))
+                user.msisdn_hash, 
+                user.mgf1ParameterSpec,
+                user.hashingAlgorithm))
 
             self.connection.commit()
 
@@ -150,7 +161,7 @@ class Users(User):
 
         cursor = self.connection.cursor(buffered=True, dictionary=True)
         query = (
-                "SELECT public_key, shared_key, msisdn_hash "
+                "SELECT public_key, shared_key, msisdn_hash, mgf1ParameterSpec, hashingAlgorithm "
                 f"FROM {self.TABLE_NAME} WHERE msisdn_hash = %s")
         try:
             cursor.execute(query, (msisdn_hash, ))
@@ -162,6 +173,8 @@ class Users(User):
                 user.public_key = row['public_key']
                 user.shared_key = row['shared_key']
                 user.msisdn_hash = row['msisdn_hash']
+                user.mgf1ParameterSpec = row['mgf1ParameterSpec']
+                user.hashingAlgorithm = row['hashingAlgorithm']
 
                 cursor.close()
 

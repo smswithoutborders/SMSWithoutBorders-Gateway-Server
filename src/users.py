@@ -58,11 +58,13 @@ class Users(User):
     def __create_database__(self):
         """
         """
+        """
         connection = mysql.connector.connect(
                 user=self.userEntity.MYSQL_USER,
                 password=self.userEntity.MYSQL_PASSWORD)
+        """
 
-        cursor = connection.cursor()
+        cursor = self.connection.cursor()
         try:
             cursor.execute(
             "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(

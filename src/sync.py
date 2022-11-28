@@ -18,6 +18,13 @@ def generate_shared_key(keysize: int=256//16) -> str:
 
     return secrets.token_hex(nbytes=keysize)
 
+def tls_available() -> bool:
+    """
+    """
+    if not os.environ.get("SSL_KEY") or not os.environ.get("SSL_CERTIFICATE"):
+        return False
+
+    return True
 
 def get_sockets_sessions_url(user_id: str, host: str, port: str) -> str:
     """
@@ -29,7 +36,7 @@ def get_sockets_sessions_url(user_id: str, host: str, port: str) -> str:
         raise error
     else:
         try:
-            websocket_protocol = "ws"
+            websocket_protocol = "ws" if not tls_available() else "wss"
             synchronization_initialization_url = "%s://%s:%s/v%s/sync/init/%s" % (
                     websocket_protocol, 
                     host,

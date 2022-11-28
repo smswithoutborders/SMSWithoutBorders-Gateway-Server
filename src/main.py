@@ -141,6 +141,9 @@ def get_users_platforms(user_id: str, session_id: str):
             user_password = data['password']
             user_public_key = data['public_key']
 
+            app.logger.debug("mgf1ParameterSpec: %s", mgf1ParameterSpec)
+            app.logger.debug("hashingAlgorithm: %s", hashingAlgorithm)
+
             decrypted_password = rsa.SecurityRSA.decrypt(user_password, 
                     private_key_filepath=RSA_PR_KEY,
                     mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)

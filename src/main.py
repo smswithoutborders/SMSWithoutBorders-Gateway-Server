@@ -144,6 +144,10 @@ def get_users_platforms(user_id: str, session_id: str):
             decrypted_password = rsa.SecurityRSA.decrypt(user_password, 
                     private_key_filepath=RSA_PR_KEY,
                     mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)
+        except Exception as error:
+            app.logger.exception(error)
+            return 'error with decryption', 400
+        else:
 
             user_msisdn_hash = None
             try:
@@ -158,7 +162,7 @@ def get_users_platforms(user_id: str, session_id: str):
             try:
                 user = users.find(msisdn_hash=user_msisdn_hash)
             except Exception as error:
-                logging.exception(error)
+                app.logger.exception(error)
                 return '', 500 
 
             user_shared_key = sync.generate_shared_key()
@@ -194,12 +198,6 @@ def get_users_platforms(user_id: str, session_id: str):
                 return jsonify({
                     "shared_key": str(b64_encoded_shared_key, 'utf-8'),
                     "user_platforms":user_platforms}), 200
-
-            # TODO if error decrypting should have 500
-            # TODO exception for bad decryption
-        except Exception as error:
-            logging.exception(error)
-            return '', 500 
 
 
 @app.route('/sms/platform/<platform>', methods=['POST'])

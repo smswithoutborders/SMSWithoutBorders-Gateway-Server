@@ -9,6 +9,7 @@ WORKDIR /gateway_server
 COPY . .
 
 RUN pip install -r requirements.txt
+RUN pip install --force-reinstall "git+https://github.com/smswithoutborders/SMSWithoutBorders-BE-Publisher.git@main#egg=SwobBackendPublisher"
 
 # EXPOSE ${SSL_PORT}
 

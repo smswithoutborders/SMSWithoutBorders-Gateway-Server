@@ -186,6 +186,7 @@ def get_users_platforms(user_id: str, session_id: str):
             try:
                 user_platforms = BEPubLib.get_user_platforms_from_id(user_id=user_id)
 
+                mgf1ParameterSpec = data['mgf1ParameterSpec_dec'] if 'mgf1ParameterSpec_dec' in data else 'sha1'
                 encrypted_shared_key = rsa.SecurityRSA.encrypt_with_key(
                         data=user_shared_key, 
                         public_key=user_public_key,
@@ -201,7 +202,7 @@ def get_users_platforms(user_id: str, session_id: str):
             else:
                 b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
                 return jsonify({
-                    "shared_key": str(b64_encoded_shared_key, 'utf-8'),
+                    "shared_key": b64_encoded_shared_key.decode('utf-8'),
                     "user_platforms":user_platforms}), 200
 
 

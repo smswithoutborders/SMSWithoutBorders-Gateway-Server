@@ -44,8 +44,8 @@ class SyncSockets:
         self.refresh_limit = 3
         self.time_to_refresh = 10
 
-        self.gateway_server_protocol = "http"
-        self.gateway_server_protocol_mobile = "app"
+        self.gateway_server_protocol = "http" if not ssl_context else "https"
+        self.gateway_server_protocol_mobile = "app" if not ssl_context else "apps"
 
         self.__valid_sessions = {}
 
@@ -284,8 +284,6 @@ def main() -> None:
     # HOST = "127.0.0.1" if not HOST else HOST
     HOST = "127.0.0.1" if not HOST else "0.0.0.0"
 
-    GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
-    GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
 
     SSL_KEY_FILEPATH = os.environ.get("SSL_KEY")
     SSL_CRT_FILEPATH = os.environ.get("SSL_CRT")
@@ -295,11 +293,14 @@ def main() -> None:
     logging.debug("SSL_CRT_FILEPATH: %s", SSL_CRT_FILEPATH)
     logging.debug("SSL_PEM_FILEPATH: %s", SSL_PEM_FILEPATH)
 
+    GATEWAY_SERVER_HOST = os.environ["GATEWAY_SERVER_HOST"]
     if(SSL_KEY_FILEPATH and SSL_CRT_FILEPATH and SSL_PEM_FILEPATH):
+        GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_SSL_PORT"]
         main_tls(ssl_key_filepath=SSL_KEY_FILEPATH, 
                 ssl_crt_filepath=SSL_CRT_FILEPATH,
                 ssl_pem_filepath=SSL_PEM_FILEPATH)
     else:
+        GATEWAY_SERVER_PORT = os.environ["GATEWAY_SERVER_PORT"]
         main_no_tls()
 
 

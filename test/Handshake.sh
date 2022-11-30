@@ -20,32 +20,59 @@ password="dummy_password"
 echo "Starting handshake..."
 # verification_url="http://127.0.0.1:5000/v2/sync/users/dead3662-5f78-11ed-b8e7-6d06c3aaf3c6/sessions/000/"
 verification_url="https://staging.smswithoutborders.com:15000/v2/sync/users/${user_id}/sessions/000/"
-# TODO: messaging URL
+messaging_url="https://staging.smswithoutborders.com:15000/sms/platform/gateway-server"
 
-echo "public_key - $public_key"
-echo "user_id - $user_id"
-echo "password - $password"
-echo "verification url - $verification_url"
+#echo "public_key - $public_key"
+#echo "user_id - $user_id"
+#echo "password - $password"
+#echo "verification url - $verification_url"
 
 # request_body="{\"public_key\":\"$public_key\", \"password\":\"{}\", \"mgf1ParameterSpec\":\"sha256\", \"mgf1ParameterSpec_dec\":\"sha256\"}"
 
-request_body="{\"public_key\":\"$public_key\", \"password\":\"{}\", \"mgf1ParameterSpec\":\"sha256\"}"
+email=$2
+subject="Afkanerd - SMSWithoutBorders state of things"
+body="Hi!\nThis is test on $( date ), is intended to see if SMSWithoutBorders can now publish!\n\nMany thanks, Afkanerd"
+email_content="g:${email}:::${subject}:${body}"
 
-echo "$password" | \
-	tr -d '\n' | \
+tmp_email_content_file=/tmp/email_content.txt
+echo $email_content > $tmp_email_content_file
+
+iv=$((1234567890123456 + $RANDOM % 4))
+
+echo "Email content:- $email_content"
+
+encrypted_password=$( echo "$password" | tr -d '\n' | \
 	openssl pkeyutl -encrypt -inkey $server_public_key -pubin \
 	-pkeyopt rsa_padding_mode:oaep \
 	-pkeyopt rsa_oaep_md:sha256 \
 	-pkeyopt rsa_mgf1_md:sha256 | \
-	base64 -w 0 | \
-	xargs -0 -I{} curl -s -X POST \
+	base64 -w 0 )
+echo "- Encrypted password: $encrypted_password"
+
+encrypted_shared_key=$( curl -s -X POST \
 	-H "Content-Type: application/json" \
-	-d "$request_body" \
+	-d "{\"public_key\":\"$public_key\", \"password\":\"$encrypted_password\", \"mgf1ParameterSpec\":\"sha256\"}" \
 	"$verification_url" | \
-	jq -cr '.shared_key' | \
+	jq -cr '.shared_key' )
+echo "- Encrypted shared key: $encrypted_shared_key"
+
+decrypted_shared_key=$( echo $encrypted_shared_key | \
 	base64 --decode | \
 	openssl pkeyutl -decrypt -inkey $private_key_filepath \
 	-pkeyopt rsa_padding_mode:oaep \
 	-pkeyopt rsa_oaep_md:sha256 \
-	-pkeyopt rsa_mgf1_md:sha1
-# TODO: use shared key to encrypt and transmit message to online platform
+	-pkeyopt rsa_mgf1_md:sha1 )
+echo "- Decrypted shared key: $decrypted_shared_key"
+echo "- Iv: $iv"
+
+shared_key_hex=$( echo $decrypted_shared_key | od -A n -t x1 | sed -z 's/[ \n]*//g' | sed -z 's/0a$//g' )
+iv_hex=$( echo $iv | od -A n -t x1 | sed -z 's/[ \n]*//g' | sed -z 's/0a$//g' )
+
+echo "- Shared key hex: $shared_key_hex"
+echo "- Iv hex: $iv_hex"
+
+
+encrypted_content=$( echo $email_content | \
+	 openssl enc -aes-256-cbc -e -iv "$iv_hex" -K "$shared_key_hex" -in $tmp_email_content_file -a )
+ echo "- Encrypted content: $encrypted_content"
+

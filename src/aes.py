@@ -21,10 +21,13 @@ class AESCipher:
     """
 
     @staticmethod
-    def decrypt(iv: str, shared_key: str, data: str) -> bytes:
+    def decrypt(iv: bytes, shared_key: str, data: bytes) -> bytes:
         """
         """
+        print("- shared key type:", type(shared_key), shared_key)
         decryption_cipher = AES.new(
-                shared_key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
+                shared_key.encode('utf-8'), 
+                AES.MODE_CBC, 
+                iv)
         return unpad(decryption_cipher.decrypt(data), AES.block_size)
 

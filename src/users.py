@@ -54,11 +54,26 @@ class Users(User):
         """
 
         self.userEntity = userEntity
+        self.__connect__()
+
+    def __connect__(self):
+        """
+        """
         self.connection = mysql.connector.connect(
                 host=self.userEntity.MYSQL_HOST,
                 user=self.userEntity.MYSQL_USER,
                 database=self.userEntity.MYSQL_DATABASE,
                 password=self.userEntity.MYSQL_PASSWORD)
+
+        self.connection.autocommit = True
+
+    def __get_cursor__(self, buffered=None, dictionary=None):
+        """
+        """
+        if not self.connection.is_connected():
+            self.__connect__()
+
+        return self.connection.cursor(buffered=buffered, dictionary=dictionary)
 
 
     def __create_database__(self):
@@ -70,7 +85,7 @@ class Users(User):
                 password=self.userEntity.MYSQL_PASSWORD)
         """
 
-        cursor = self.connection.cursor()
+        cursor = self.__get_cursor__()
         try:
             cursor.execute(
             "CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(
@@ -86,7 +101,7 @@ class Users(User):
     def __create_tables__(self):
         """
         """
-        cursor = self.connection.cursor()
+        cursor = self.__get_cursor__()
 
         for table_name in self.TABLES:
             table_description = self.TABLES[table_name]
@@ -126,7 +141,7 @@ class Users(User):
         """
         insert or update
         """
-        cursor = self.connection.cursor()
+        cursor = self.__get_cursor__()
 
         insert_query = (
                 f"INSERT INTO {self.TABLE_NAME} "
@@ -159,7 +174,7 @@ class Users(User):
         if not msisdn_hash:
             return User()
 
-        cursor = self.connection.cursor(buffered=True, dictionary=True)
+        cursor = self.__get_cursor__(buffered=True, dictionary=True)
         query = (
                 "SELECT public_key, shared_key, msisdn_hash, mgf1ParameterSpec, hashingAlgorithm "
                 f"FROM {self.TABLE_NAME} WHERE msisdn_hash = %s")

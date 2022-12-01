@@ -210,7 +210,6 @@ def get_users_platforms(user_id: str, session_id: str):
 def incoming_sms_routing(platform):
     """
     """
-
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -227,20 +226,32 @@ def incoming_sms_routing(platform):
         text = data["text"]
         user_msisdn = data["MSISDN"]
 
-        # TODO: consume the lib at this point
-        token, user_msisdn_hash = None
-
-        user = users.find(msisdn_hash = user_msisdn_hash)
-
-        shared_key = user.shared_key
-
-        decrypted_text = aes.AESCipher.decrypt(data=text, shared_key=shared_key)
-
         try:
-            publisher.publish(text=text, token=token)
+            user_msisdn_hash = BEPubLib.hasher(data=user_msisdn)
+        except (UserDoesNotExist, DuplicateUsersExist) as error:
+            return '', 403
         except Exception as error:
-            logging.exception(error)
-
-            return '', 400
+            return '', 500
         else:
-            return 'published!', 200
+            user = users.find(msisdn_hash = user_msisdn_hash)
+            shared_key = user.shared_key
+
+            text = base64.b64decode(text)
+
+            iv = text[:16]
+            text = text[16:]
+            text = base64.b64decode(text)
+
+            decrypted_text = aes.AESCipher.decrypt(data=text, iv=iv, shared_key=shared_key)
+
+            """
+            try:
+                publisher.publish(text=text, token=token)
+            except Exception as error:
+                logging.exception(error)
+
+                return '', 400
+            else:
+                return 'published!', 200
+            """
+    return '', 200

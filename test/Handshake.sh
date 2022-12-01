@@ -17,6 +17,8 @@ user_id="dead3662-5f78-11ed-b8e7-6d06c3aaf3c6"
 
 password="dummy_password"
 
+MSISDN="+237123456789"
+
 echo "Starting handshake..."
 # verification_url="http://127.0.0.1:5000/v2/sync/users/dead3662-5f78-11ed-b8e7-6d06c3aaf3c6/sessions/000/"
 verification_url="https://staging.smswithoutborders.com:15000/v2/sync/users/${user_id}/sessions/000/"
@@ -74,5 +76,12 @@ echo "- Iv hex: $iv_hex"
 
 encrypted_content=$( echo $email_content | \
 	 openssl enc -aes-256-cbc -e -iv "$iv_hex" -K "$shared_key_hex" -in $tmp_email_content_file -a )
- echo "- Encrypted content: $encrypted_content"
+encrypted_content="${iv}${encrypted_content}"
+encrypted_content_b64=$( echo $encrypted_content | base64 -w 0 )
 
+echo "- Encrypted content: $encrypted_content_b64"
+
+curl -X POST \
+	-H "Content-Type: application/json" \
+	-d "{\"text\":\"$encrypted_content_b64\", \"MSISDN\":\"$MSISDN\"}" \
+	"$messaging_url"

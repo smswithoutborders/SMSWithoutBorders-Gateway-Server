@@ -6,7 +6,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, rsa, aes
+from src import sync, rsa, aes, publisher
 from sockets import ip_grap
 
 from src.users import Users
@@ -48,9 +48,7 @@ MYSQL_USER="root" if not os.environ.get("MYSQL_USER") else os.environ.get("MYSQL
 MYSQL_PASSWORD= os.environ["MYSQL_PASSWORD"]
 MYSQL_DATABASE= os.environ["MYSQL_DATABASE"]
 
-"""
-For BE-Pub lib
-"""
+# Database creations
 usersBEPUB = UsersEntity(
         mysql_host= MYSQL_BE_HOST,
         mysql_user = MYSQL_BE_USER,
@@ -73,6 +71,45 @@ except Exception as error:
     logging.exception(error)
 
 
+# RMQ creations
+
+def init_rmq_connections(connection_name:str):
+    """
+    """
+    try:
+        logging.debug("RMQ host: %s", os.environ.get("RMQ_HOST"))
+
+        host = os.environ.get("RMQ_HOST") \
+                if os.environ.get("RMQ_HOST") else "127.0.0.1"
+
+        tls_rmq = True \
+                if os.environ.get("RMQ_SSL") and os.environ.get("RMQ_SSL") == "true" else False
+        
+        logging.debug("ENV TLS RMQ: %s", os.environ.get("RMQ_SSL"))
+        logging.debug("TLS RMQ: %s", tls_rmq)
+
+        rmq_connection: pika.BlockingConnection = publisher.get_rmq_connection(
+                ssl_crt = os.environ.get("SSL_CERTIFICATE"), 
+                ssl_key=os.environ.get("SSL_KEY"), 
+                ssl_pem=os.environ.get("SSL_PEM"),
+                tls_rmq=tls_rmq,
+                connection_name=connection_name,
+                host=host)
+    except Exception as error:
+        raise error
+    else:
+        channel = publisher.create_rmq_channel(connection=rmq_connection)
+        publisher.create_rmq_exchange(channel=channel)
+
+        return rmq_connection, channel
+
+    return None, None
+
+default_channel_name = "SMSWithoutBorders-official"
+rmq_connection, rmq_channel = init_rmq_connections(default_channel_name)
+
+
+# Flask creations
 app = Flask(__name__)
 app.config.from_object(__name__)
 
@@ -81,7 +118,6 @@ CORS(
     origins="*",
     supports_credentials=True,
 )
-
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
@@ -242,16 +278,27 @@ def incoming_sms_routing(platform):
             text = text[16:]
             text = base64.b64decode(text)
 
-            decrypted_text = aes.AESCipher.decrypt(data=text, iv=iv, shared_key=shared_key)
+            decrypted_text = aes.AESCipher.decrypt(
+                    data=text, 
+                    iv=iv, 
+                    shared_key=shared_key)
 
-            """
+            platform_letter = decrypted_text[0]
+
+            platform_name = BEPubLib.get_platform_name_from_letter(
+                    platform_letter=platform_letter)
+
+            token = BEPubLib.get_grant_from_platform_name(
+                    phone_number=user_msisdn, 
+                    platform_name=platform_name)
+
             try:
-                publisher.publish(text=text, token=token)
+                rmq_channel = publisher.create_rmq_channel(connection=rmq_connection)
+                publisher.publish(channel=rmq_channel, text=text, token=token)
             except Exception as error:
                 logging.exception(error)
 
                 return '', 400
             else:
                 return 'published!', 200
-            """
     return '', 200

@@ -1,87 +1,59 @@
 #!/usr/bin/env python3
 
+import os
+import json
 import pika
-import ssl
 import logging
 
+from src import rmq_broker
 
-def create_rmq_channel(connection: pika.BlockingConnection) -> pika.channel.Channel:
+def init_rmq_connections(connection_name:str):
     """
+    TODO: transform all env to args
     """
-    channel = connection.channel()
-    return channel
+    try:
+        logging.debug("RMQ host: %s", os.environ.get("RMQ_HOST"))
 
-def create_rmq_exchange(
-        channel: pika.channel.Channel,
-        exchange_name: str="smswithoutborders-exchange",
-        exchange_type: str="topic") -> None: 
-    """
-    """
-    channel.exchange_declare(
-        exchange=exchange_name,
-        exchange_type=exchange_type,
-        durable=True)
+        host = os.environ.get("RMQ_HOST") \
+                if os.environ.get("RMQ_HOST") else "127.0.0.1"
 
-def get_rmq_connection(
-        ssl_crt: str=None, 
-        ssl_key: str=None, 
-        ssl_pem: str=None, 
-        tls_rmq: bool=False,
-        connection_name: str="default-connection",
-        heartbeat:int = 30,
-        host: str='127.0.0.1',
-        ssl_port: str="5671", 
-        port: str="5672") -> pika.BlockingConnection:
-    """
-    - If using docker-compose network, unless certificate signed with
-    service name it will fail to verify certificates.
+        tls_rmq = True \
+                if os.environ.get("RMQ_SSL") and os.environ.get("RMQ_SSL") == "true" else False
+        
+        logging.debug("ENV TLS RMQ: %s", os.environ.get("RMQ_SSL"))
+        logging.debug("TLS RMQ: %s", tls_rmq)
+        logging.debug("RMQ DEFAULT USER: %s", os.environ.get("RABBITMQ_DEFAULT_USER"))
 
-    - If connecting to external host set: tls_rmq = True - would allow
-    for using SSL.
-    """
-    client_properties = {'connection_name' : connection_name}
-    conn_params = None
-
-    if(ssl_crt and ssl_key and ssl_pem and tls_rmq):
-        logging.debug("Connectin securely to %s", host)
-
-        # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-
-        ssl_context = ssl.create_default_context()
-        ssl_context.load_cert_chain(certfile=ssl_crt,
-                keyfile=ssl_key)
-        ssl_context.load_verify_locations(ssl_pem)
-
-        ssl_options = pika.SSLOptions(ssl_context)
-        conn_params = pika.ConnectionParameters(
-                host=host,
-                port=ssl_port, 
-                ssl_options=ssl_options,
-                heartbeat=heartbeat,
-                client_properties=client_properties)
+        rmq_connection: pika.BlockingConnection = rmq_broker.get_rmq_connection(
+                user=os.environ.get("RABBITMQ_DEFAULT_USER"),
+                password=os.environ.get("RABBITMQ_DEFAULT_PASS"),
+                ssl_crt = os.environ.get("SSL_CERTIFICATE"), 
+                ssl_key=os.environ.get("SSL_KEY"), 
+                ssl_pem=os.environ.get("SSL_PEM"),
+                tls_rmq=tls_rmq,
+                connection_name=connection_name,
+                ca_ssl_host=os.environ.get("HOST"),
+                host=host)
+    except Exception as error:
+        raise error
     else:
-        conn_params = pika.ConnectionParameters( 
-                host=host, 
-                port=port,
-                client_properties=client_properties)
-    connection = pika.BlockingConnection(conn_params)
+        channel = rmq_broker.create_rmq_channel(connection=rmq_connection)
+        rmq_broker.create_rmq_exchange(channel=channel)
 
-    return connection
+        return rmq_connection, channel
 
-def publish(channel: pika.channel.Channel, text: str, token: str) -> None:
+    return None, None
+
+
+def publish(channel: pika.channel.Channel, data: dict) -> None:
     """
     """
-    data = json.dumps({
-        "text":text,
-        "token": token})
+    data = json.dumps(data)
 
     try:
         channel.basic_publish(
-            exchange=rabbitmq_exchange_name,
-            routing_key=routing_key,
+            exchange=rmq_broker.default_exchange_name,
+            routing_key=rmq_broker.default_routing_key,
             body=data,
             properties=pika.BasicProperties(
                 delivery_mode=2,  # make message persistent
@@ -89,3 +61,12 @@ def publish(channel: pika.channel.Channel, text: str, token: str) -> None:
         )
     except Exception as error:
         raise error
+
+def active_connection(channel: pika.channel.Channel) -> bool:
+    """
+    TODO: 
+        - Check if channel is closed
+    """
+    connection: pika.BlockingConnection = channel.connection
+    return connection.is_closed
+

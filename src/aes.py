@@ -24,7 +24,6 @@ class AESCipher:
     def decrypt(iv: bytes, shared_key: str, data: bytes) -> bytes:
         """
         """
-        print("- shared key type:", type(shared_key), shared_key)
         decryption_cipher = AES.new(
                 shared_key.encode('utf-8'), 
                 AES.MODE_CBC, 

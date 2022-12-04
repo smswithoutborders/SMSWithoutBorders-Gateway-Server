@@ -72,42 +72,8 @@ except Exception as error:
 
 
 # RMQ creations
-
-def init_rmq_connections(connection_name:str):
-    """
-    """
-    try:
-        logging.debug("RMQ host: %s", os.environ.get("RMQ_HOST"))
-
-        host = os.environ.get("RMQ_HOST") \
-                if os.environ.get("RMQ_HOST") else "127.0.0.1"
-
-        tls_rmq = True \
-                if os.environ.get("RMQ_SSL") and os.environ.get("RMQ_SSL") == "true" else False
-        
-        logging.debug("ENV TLS RMQ: %s", os.environ.get("RMQ_SSL"))
-        logging.debug("TLS RMQ: %s", tls_rmq)
-
-        rmq_connection: pika.BlockingConnection = publisher.get_rmq_connection(
-                ssl_crt = os.environ.get("SSL_CERTIFICATE"), 
-                ssl_key=os.environ.get("SSL_KEY"), 
-                ssl_pem=os.environ.get("SSL_PEM"),
-                tls_rmq=tls_rmq,
-                connection_name=connection_name,
-                host=host)
-    except Exception as error:
-        raise error
-    else:
-        channel = publisher.create_rmq_channel(connection=rmq_connection)
-        publisher.create_rmq_exchange(channel=channel)
-
-        return rmq_connection, channel
-
-    return None, None
-
-default_channel_name = "SMSWithoutBorders-official"
-rmq_connection, rmq_channel = init_rmq_connections(default_channel_name)
-
+default_channel_name = "swob-official-publisher"
+rmq_connection, rmq_channel = publisher.init_rmq_connections(default_channel_name)
 
 # Flask creations
 app = Flask(__name__)
@@ -138,13 +104,6 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
-def logging_after_request(response):
-    # in here is where we transmit to the logger trace
-    # logging.debug(response)
-    logging.debug(response.response)
-    return response
-
-app.after_request(logging_after_request)
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])
 def get_users_platforms(user_id: str, session_id: str):
@@ -246,6 +205,8 @@ def get_users_platforms(user_id: str, session_id: str):
 def incoming_sms_routing(platform):
     """
     """
+    global rmq_connection, rmq_channel
+
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -282,23 +243,52 @@ def incoming_sms_routing(platform):
                     data=text, 
                     iv=iv, 
                     shared_key=shared_key)
+            decrypted_text = str(decrypted_text, 'utf-8')
+            app.logger.debug("decrypted successfully...")
 
             platform_letter = decrypted_text[0]
-
-            platform_name = BEPubLib.get_platform_name_from_letter(
-                    platform_letter=platform_letter)
-
-            token = BEPubLib.get_grant_from_platform_name(
-                    phone_number=user_msisdn, 
-                    platform_name=platform_name)
+            app.logger.debug("platform letter: %s", platform_letter)
 
             try:
-                rmq_channel = publisher.create_rmq_channel(connection=rmq_connection)
-                publisher.publish(channel=rmq_channel, text=text, token=token)
-            except Exception as error:
-                logging.exception(error)
+                platform_name = BEPubLib.get_platform_name_from_letter(
+                        platform_letter=platform_letter)
+                app.logger.debug("platform name: %s", platform_name)
 
-                return '', 400
-            else:
-                return 'published!', 200
+                platform_name = platform_name["platform_name"]
+
+                """
+                data = BEPubLib.get_grant_from_platform_name(
+                        phone_number=user_msisdn, 
+                        platform_name=platform_name)
+                """
+                data = {"username":"dummy_data", 
+                        "token":{"key":"dummy", "data":"dummy"},
+                        "uniqueId":"1234567",
+                        "phoneNumber_bash":user_msisdn_hash }
+
+                app.logger.debug("token: %s", data)
+
+                try:
+                    if not publisher.active_connection(rmq_channel):
+                        rmq_connection, rmq_channel = publisher.init_rmq_connections(default_channel_name)
+
+                    publisher.publish(channel=rmq_channel, data=data)
+                except Exception as error:
+                    app.logger.exception(error)
+                    return '', 400
+                else:
+                    return 'published!', 200
+
+            except Exception as error:
+                app.logger.exception(error)
+                return '', 500
     return '', 200
+
+
+def logging_after_request(response):
+    # in here is where we transmit to the logger trace
+    # logging.debug(response)
+    logging.debug(response.response)
+    return response
+
+app.after_request(logging_after_request)

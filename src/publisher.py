@@ -60,7 +60,7 @@ def publish(channel: pika.channel.Channel, data: str) -> None:
     except Exception as error:
         raise error
 
-def active_connection(channel: pika.channel.Channel) -> bool:
+def not_active_connection(channel: pika.channel.Channel) -> bool:
     """
     TODO: 
         - Check if channel is closed

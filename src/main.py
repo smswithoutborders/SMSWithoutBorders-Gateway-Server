@@ -282,7 +282,7 @@ def incoming_sms_routing(platform):
                 app.logger.debug("Encrypted data: %s", data)
 
                 try:
-                    if not publisher.active_connection(rmq_channel):
+                    if not publisher.not_active_connection(rmq_channel):
                         rmq_connection, rmq_channel = publisher.init_rmq_connections(default_channel_name)
 
                     publisher.publish(channel=rmq_channel, data=data)

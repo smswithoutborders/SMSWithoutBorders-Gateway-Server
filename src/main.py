@@ -266,7 +266,20 @@ def incoming_sms_routing(platform):
                         "uniqueId":"1234567",
                         "phoneNumber_bash":user_msisdn_hash }
 
-                app.logger.debug("token: %s", data)
+                shared_key = os.environ["PUBLISHER_ENCRYPTION_KEY"]
+                shared_key = shared_key[:32]
+
+                # Padding just in case shorter than required key size
+                if len(shared_key) < 32:
+                    shared_key += "0"*(32 - len(shared_key)) 
+
+                data = json.dumps(data).encode("utf-8")
+                data = aes.AESCipher.encrypt(shared_key=shared_key, data=data)
+                data = base64.b64encode(data)
+
+                data = str(data, 'utf-8')
+
+                app.logger.debug("Encrypted data: %s", data)
 
                 try:
                     if not publisher.active_connection(rmq_channel):

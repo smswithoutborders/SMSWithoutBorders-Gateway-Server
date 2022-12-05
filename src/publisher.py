@@ -45,11 +45,9 @@ def init_rmq_connections(connection_name:str):
     return None, None
 
 
-def publish(channel: pika.channel.Channel, data: dict) -> None:
+def publish(channel: pika.channel.Channel, data: str) -> None:
     """
     """
-    data = json.dumps(data)
-
     try:
         channel.basic_publish(
             exchange=rmq_broker.default_exchange_name,

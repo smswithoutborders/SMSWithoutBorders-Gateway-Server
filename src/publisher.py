@@ -7,7 +7,7 @@ import logging
 
 from src import rmq_broker
 
-def init_rmq_connections(connection_name:str):
+def init_rmq_connections():
     """
     TODO: transform all env to args
     """
@@ -31,7 +31,6 @@ def init_rmq_connections(connection_name:str):
                 ssl_key=os.environ.get("SSL_KEY"), 
                 ssl_pem=os.environ.get("SSL_PEM"),
                 tls_rmq=tls_rmq,
-                connection_name=connection_name,
                 ca_ssl_host=os.environ.get("HOST"),
                 host=host)
     except Exception as error:
@@ -60,11 +59,12 @@ def publish(channel: pika.channel.Channel, data: str) -> None:
     except Exception as error:
         raise error
 
-def not_active_connection(channel: pika.channel.Channel) -> bool:
+# def not_active_connection(channel: pika.channel.Channel) -> bool:
+def not_active_connection(connection: pika.BlockingConnection) -> bool:
     """
     TODO: 
         - Check if channel is closed
     """
-    connection: pika.BlockingConnection = channel.connection
+    # connection: pika.BlockingConnection = channel.connection
     return connection.is_closed
 

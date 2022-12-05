@@ -1,16 +1,45 @@
 #!/usr/bin/env python3
 
+import os
 import pika
 import ssl
 import logging
 
-default_exchange_name = "smswithoutborders-exchange"
-default_routing_key = "smswithoutborders-default-routing-key"
+default_routing_key = "default-smswithoutborders-routing-key" \
+        if not os.environ.get("RMQ_ROUTING_KEY") \
+        else os.environ.get("RMQ_ROUTING_KEY")
+
+default_exchange_name = "default-smswithoutborders-exchange" \
+        if not os.environ.get("RMQ_EXCHANGE") \
+        else os.environ.get("RMQ_EXCHANGE")
+
+default_connection_name = "default-smswithoutborders-publisher" \
+        if not os.environ.get("RMQ_CONNECTION_NAME") \
+        else os.environ.get("RMQ_CONNECTION_NAME")
+
+default_queue_name = "default-smswithoutborders-queue" \
+        if not os.environ.get("RMQ_QUEUE_NAME") \
+        else os.environ.get("RMQ_QUEUE_NAME")
+
+
+def create_queue(channel: pika.channel.Channel) -> None:
+    """
+    """
+    channel.queue_declare(default_queue_name, durable=True)
+    channel.queue_bind(
+            queue=default_queue_name,
+            exchange=default_exchange_name,
+            routing_key=default_routing_key)
+
+    logging.debug("queue created successfully")
 
 def create_rmq_channel(connection: pika.BlockingConnection) -> pika.channel.Channel:
     """
     """
     channel = connection.channel()
+    logging.debug("channel creates successfully")
+
+    create_queue(channel=channel)
     return channel
 
 def create_rmq_exchange(
@@ -20,7 +49,7 @@ def create_rmq_exchange(
     """
     """
     channel.exchange_declare(
-        exchange=exchange_name,
+        exchange=default_exchange_name,
         exchange_type=exchange_type,
         durable=True)
 
@@ -31,8 +60,8 @@ def get_rmq_connection(
         ssl_key: str=None, 
         ssl_pem: str=None, 
         tls_rmq: bool=False,
-        connection_name: str="default-connection",
-        heartbeat: int = 600,
+        connection_name: str=default_connection_name,
+        heartbeat: int = 30,
         blocked_connection_timeout: int=300,
         host: str='127.0.0.1',
         ca_ssl_host: str ='localhost',

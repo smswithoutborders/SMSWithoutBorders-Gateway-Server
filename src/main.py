@@ -72,8 +72,7 @@ except Exception as error:
 
 
 # RMQ creations
-default_channel_name = "swob-official-publisher"
-rmq_connection, rmq_channel = publisher.init_rmq_connections(default_channel_name)
+rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
 # Flask creations
 app = Flask(__name__)
@@ -256,7 +255,6 @@ def incoming_sms_routing(platform):
 
                 platform_name = platform_name["platform_name"]
 
-                """
                 data = BEPubLib.get_grant_from_platform_name(
                         phone_number=user_msisdn, 
                         platform_name=platform_name)
@@ -265,6 +263,7 @@ def incoming_sms_routing(platform):
                         "token":{"key":"dummy", "data":"dummy"},
                         "uniqueId":"1234567",
                         "phoneNumber_bash":user_msisdn_hash }
+                """
 
                 shared_key = os.environ["PUBLISHER_ENCRYPTION_KEY"]
                 shared_key = shared_key[:32]
@@ -282,8 +281,9 @@ def incoming_sms_routing(platform):
                 app.logger.debug("Encrypted data: %s", data)
 
                 try:
-                    if not publisher.not_active_connection(rmq_channel):
-                        rmq_connection, rmq_channel = publisher.init_rmq_connections(default_channel_name)
+                    # if not publisher.not_active_connection(rmq_channel):
+                    if not publisher.not_active_connection(rmq_connection):
+                        rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
                     publisher.publish(channel=rmq_channel, data=data)
                 except Exception as error:

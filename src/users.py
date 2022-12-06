@@ -168,7 +168,7 @@ class Users(User):
         finally:
             cursor.close()
 
-    def find(self, msisdn_hash: str) -> None:
+    def find(self, msisdn_hash: str):
         """
         """
         if not msisdn_hash:

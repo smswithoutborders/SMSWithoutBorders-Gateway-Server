@@ -230,6 +230,10 @@ def incoming_sms_routing(platform):
             return '', 500
         else:
             user = users.find(msisdn_hash = user_msisdn_hash)
+
+            if not user:
+                return 'user not found', 403
+
             shared_key = user.shared_key
 
             text = base64.b64decode(text)

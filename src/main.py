@@ -258,6 +258,8 @@ def incoming_sms_routing(platform):
                 data = BEPubLib.get_grant_from_platform_name(
                         phone_number=user_msisdn, 
                         platform_name=platform_name)
+                data['data'] = decrypted_text
+                data['platform_name'] = platform_name
                 """
                 data = {"username":"dummy_data", 
                         "token":{"key":"dummy", "data":"dummy"},

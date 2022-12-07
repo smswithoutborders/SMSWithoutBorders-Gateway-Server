@@ -1,6 +1,6 @@
-FROM python:3.10
+FROM python:3.9
 
-RUN apt update && apt install -y apache2 apache2-dev python3-pip less vim
+RUN apt update && apt install -y apache2 apache2-dev python3-pip
 
 WORKDIR /gateway_server
 
@@ -16,6 +16,9 @@ RUN pip install --force-reinstall "git+https://github.com/smswithoutborders/SMSW
 # EXPOSE ${SSL_PORT}
 
 # CMD ["flask", "--app", "src/main", "run"]
+RUN usermod -u 1000 www-data
+RUN usermod -G root www-data
+
 CMD mod_wsgi-express start-server wsgi_script.py \
 	--user www-data \
 	--group www-data \

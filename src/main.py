@@ -236,7 +236,10 @@ def incoming_sms_routing(platform):
 
             shared_key = user.shared_key
 
-            text = base64.b64decode(text)
+            try:
+                text = base64.b64decode(text)
+            except Exception as error:
+                return 'invalid text format', 400
 
             iv = text[:16]
             text = text[16:]

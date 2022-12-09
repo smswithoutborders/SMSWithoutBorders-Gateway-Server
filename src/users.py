@@ -194,3 +194,5 @@ class Users(User):
                 cursor.close()
 
             return user
+        finally: 
+            cursor.close()

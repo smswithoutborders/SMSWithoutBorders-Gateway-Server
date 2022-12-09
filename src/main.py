@@ -235,6 +235,9 @@ def incoming_sms_routing(platform):
                 return 'user not found', 403
 
             shared_key = user.shared_key
+            if not shared_key:
+               logging.error("no shared key for user, strange")
+               return 'shared key error', 500
 
             try:
                 text = base64.b64decode(text)
@@ -245,10 +248,14 @@ def incoming_sms_routing(platform):
             text = text[16:]
             text = base64.b64decode(text)
 
-            decrypted_text = aes.AESCipher.decrypt(
-                    data=text, 
-                    iv=iv, 
-                    shared_key=shared_key)
+            try:
+                decrypted_text = aes.AESCipher.decrypt(
+                        data=text, 
+                        iv=iv, 
+                        shared_key=shared_key)
+            except Exception as error:
+                return 'failed to decrypt', 403
+
             decrypted_text = str(decrypted_text, 'utf-8')
             app.logger.debug("decrypted successfully...")
 

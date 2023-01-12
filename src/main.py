@@ -187,15 +187,6 @@ def get_users_platforms(user_id: str, session_id: str):
                         mgf1ParameterSpec=mgf1ParameterSpec, 
                         hashingAlgorithm=hashingAlgorithm)
 
-                try:
-                    rmq_broker.add_user(
-                            rmq_host=os.environ.get("RMQ_HOST"),
-                            rmq_port=os.environ.get("RMQ_PORT"),
-                            user_name=encrypted_shared_key,
-                            password=user_shared_key)
-                except Exception as error:
-                    logging.exception(error)
-
                 #TODO: customize exception just in case issue with encrypting for user
             except Exception as error:
                 logging.exception(error)
@@ -203,6 +194,16 @@ def get_users_platforms(user_id: str, session_id: str):
 
             else:
                 b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
+                user_notifications_password='asshole'
+
+                try:
+                    rmq_broker.add_user(
+                            rmq_host=os.environ.get("RMQ_HOST"),
+                            user_name=user_msisdn_hash,
+                            password=user_notifications_password)
+                except Exception as error:
+                    logging.exception(error)
+
                 return jsonify({
                     "shared_key": b64_encoded_shared_key.decode('utf-8'),
                     "user_platforms":user_platforms}), 200

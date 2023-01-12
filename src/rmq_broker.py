@@ -22,6 +22,50 @@ default_queue_name = "default-smswithoutborders-queue" \
         else os.environ.get("RMQ_QUEUE_NAME")
 
 
+ def add_user(self, user_name: str, password: str, 
+              rmq_host: str='127.0.0.1', rmq_port: str='15671') -> None:
+        """
+        """
+        try:
+            add_user_url = f"http://{rmq_host}:{rmq_port}/api/users/{user_name}"
+
+            add_user_data = { "password": password }
+
+            add_user_response = requests.put(url=add_user_url, json=add_user_data, 
+                                             auth=(os.environ.get("RABBITMQ_DEFAULT_USER"), 
+                                                   os.environ.get("RABBITMQ_DEFAULT_PASS")))
+
+            if add_user_response.status_code in [201, 204]:
+                logging.debug("[*] New user added")
+                logging.debug("[*] User tag set")
+
+                set_permissions_url = f"http://{rmq_host}:{rmq_port}/api/permissions/%2F/{user_name}"
+
+                set_permissions_data = {
+                    "write":f"^({default_exchange_name}|{user_name}_.*)$",
+                    "read":f"^({rabbitmq_exchange_name}|{user_name}_.*)$"
+                }
+
+                set_permissions_response = requests.put(url=set_permissions_url, 
+                                                        json=set_permissions_data, 
+                                                        auth=(rabbitmq_user, rabbitmq_password))
+
+                if set_permissions_response.status_code in [201, 204]:
+                    logging.debug("[*] User privilege set")
+                    return None
+
+                else:
+                    logging.error("Failed to set user privilege")
+                    set_permissions_response.raise_for_status()
+
+            else:
+                logging.error("Failed to add new user")
+                add_user_response.raise_for_status()
+
+        except Exception as error:
+            raise
+
+
 def create_queue(channel: pika.channel.Channel) -> None:
     """
     """

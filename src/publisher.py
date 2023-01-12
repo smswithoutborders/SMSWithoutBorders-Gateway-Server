@@ -21,7 +21,9 @@ def init_rmq_connections():
                 if os.environ.get("RMQ_SSL") and os.environ.get("RMQ_SSL") == "true" else False
         
         logging.debug("ENV TLS RMQ: %s", os.environ.get("RMQ_SSL"))
+
         logging.debug("TLS RMQ: %s", tls_rmq)
+
         logging.debug("RMQ DEFAULT USER: %s", os.environ.get("RABBITMQ_DEFAULT_USER"))
 
         rmq_connection: pika.BlockingConnection = rmq_broker.get_rmq_connection(
@@ -33,8 +35,10 @@ def init_rmq_connections():
                 tls_rmq=tls_rmq,
                 ca_ssl_host=os.environ.get("HOST"),
                 host=host)
+
     except Exception as error:
         raise error
+
     else:
         channel = rmq_broker.create_rmq_channel(connection=rmq_connection)
         rmq_broker.create_rmq_exchange(channel=channel)

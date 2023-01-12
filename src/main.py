@@ -6,7 +6,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, rsa, aes, publisher
+from src import sync, rsa, aes, publisher, rmq_broker
 from sockets import ip_grap
 
 from src.users import Users
@@ -187,8 +187,16 @@ def get_users_platforms(user_id: str, session_id: str):
                         mgf1ParameterSpec=mgf1ParameterSpec, 
                         hashingAlgorithm=hashingAlgorithm)
 
-                #TODO: customize exception just in case issue with encrypting for user
+                try:
+                    rmq_broker.add_user(
+                            rmq_host=os.environ.get("RMQ_HOST"),
+                            rmq_port=os.environ.get("RMQ_PORT"),
+                            user_name=encrypted_shared_key,
+                            password=user_shared_key)
+                except Exception as error:
+                    logging.exception(error)
 
+                #TODO: customize exception just in case issue with encrypting for user
             except Exception as error:
                 logging.exception(error)
                 return '', 500

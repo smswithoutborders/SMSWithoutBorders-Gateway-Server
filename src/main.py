@@ -194,13 +194,12 @@ def get_users_platforms(user_id: str, session_id: str):
 
             else:
                 b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
-                user_notifications_password='asshole'
 
                 try:
                     rmq_broker.add_user(
                             rmq_host=os.environ.get("RMQ_HOST"),
                             user_name=user_msisdn_hash,
-                            password=user_notifications_password)
+                            password=str(b64_encoded_shared_key, 'utf-8'))
                 except Exception as error:
                     logging.exception(error)
 

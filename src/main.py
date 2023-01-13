@@ -6,7 +6,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, rsa, aes, publisher, rmq_broker
+from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from sockets import ip_grap
 
 from src.users import Users
@@ -74,6 +74,12 @@ except Exception as error:
 # RMQ creations
 rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
+# create notifications exchanges
+try:
+    notifications.create_exchange(channel=rmq_channel)
+except Exception as error:
+    logging.exception(error)
+
 # Flask creations
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -108,6 +114,8 @@ def get_sync_url(user_id: str):
 def get_users_platforms(user_id: str, session_id: str):
     """
     """
+    global rmq_connection, rmq_channel
+
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -196,14 +204,20 @@ def get_users_platforms(user_id: str, session_id: str):
                 b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
 
                 try:
-                    rmq_broker.add_user(
+                    if not publisher.not_active_connection(rmq_connection):
+                        rmq_connection, rmq_channel = publisher.init_rmq_connections()
+
+                    notifications.create_users_notifications(
                             rmq_host=os.environ.get("RMQ_HOST"),
+                            channel = rmq_channel,
+                            queue_name = user_msisdn_hash,
                             user_name=user_msisdn_hash,
-                            password=str(b64_encoded_shared_key, 'utf-8'))
+                            password=b64_encoded_shared_key.decode('utf-8'))
                 except Exception as error:
                     logging.exception(error)
 
                 return jsonify({
+                    "msisdn_hash": user_msisdn_hash,
                     "shared_key": b64_encoded_shared_key.decode('utf-8'),
                     "user_platforms":user_platforms}), 200
 

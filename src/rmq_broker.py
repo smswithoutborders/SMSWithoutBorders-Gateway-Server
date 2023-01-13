@@ -73,14 +73,25 @@ def add_user(user_name: str, password: str,
         raise
 
 
-def create_queue(channel: pika.channel.Channel) -> None:
+def create_queue(channel: pika.channel.Channel, 
+        queue_name:str=None, durable:bool=True, 
+        exchange_name:str=None, routing_key:str=None) -> None:
     """
     """
-    channel.queue_declare(default_queue_name, durable=True)
+    if not queue_name:
+        queue_name = default_queue_name
+
+    if not exchange_name:
+        exchange_name = default_exchange_name
+
+    if not routing_key:
+        routing_key = default_routing_key
+
+    channel.queue_declare(queue_name, durable=durable)
     channel.queue_bind(
-            queue=default_queue_name,
-            exchange=default_exchange_name,
-            routing_key=default_routing_key)
+            queue=queue_name,
+            exchange=exchange_name,
+            routing_key=routing_key)
 
     logging.debug("queue created successfully")
 
@@ -95,12 +106,15 @@ def create_rmq_channel(connection: pika.BlockingConnection) -> pika.channel.Chan
 
 def create_rmq_exchange(
         channel: pika.channel.Channel,
-        exchange_name: str=default_exchange_name,
+        exchange_name: str=None,
         exchange_type: str="topic") -> None: 
     """
     """
+    if not exchange_name:
+        exchange_name = default_exchange_name
+
     channel.exchange_declare(
-        exchange=default_exchange_name,
+        exchange=exchange_name,
         exchange_type=exchange_type,
         durable=True)
 

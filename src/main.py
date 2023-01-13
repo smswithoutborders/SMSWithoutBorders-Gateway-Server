@@ -208,11 +208,12 @@ def get_users_platforms(user_id: str, session_id: str):
                         rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
                     notifications.create_users_notifications(
-                            rmq_host=os.environ.get("RMQ_HOST"),
+                            rmq_host = os.environ.get("RMQ_HOST"),
                             channel = rmq_channel,
                             queue_name = user_msisdn_hash,
-                            user_name=user_msisdn_hash,
-                            password=b64_encoded_shared_key.decode('utf-8'))
+                            user_name = user_msisdn_hash,
+                            password = b64_encoded_shared_key.decode('utf-8'))
+
                 except Exception as error:
                     logging.exception(error)
 

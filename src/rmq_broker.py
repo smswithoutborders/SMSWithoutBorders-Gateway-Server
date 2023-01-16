@@ -46,10 +46,17 @@ def add_user(user_name: str, password: str,
 
             set_permissions_url = f"http://{rmq_host}:{rmq_port}/api/permissions/%2F/{user_name}"
 
+            """
             set_permissions_data = {
                 "configure":f"^({default_exchange_name}|{user_name}_.*)$",
                 "write":f"^({default_exchange_name}|{user_name}_.*)$",
                 "read":f"^({default_exchange_name}|{user_name}_.*)$"
+            }
+            """
+            set_permissions_data = {
+                "configure":f".*",
+                "write":".*",
+                "read":".*"
             }
 
             set_permissions_response = requests.put(url=set_permissions_url, 

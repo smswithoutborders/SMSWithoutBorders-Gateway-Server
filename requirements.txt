@@ -14,7 +14,7 @@ protobuf==4.21.9
 pycryptodome==3.14.1
 pycryptodomex==3.15.0
 six==1.16.0
-git+https://github.com/smswithoutborders/SMSWithoutBorders-Customized-Third-Party-Platforms.git@main#egg=SwobThirdPartyPlatforms
+git+https://github.com/smswithoutborders/SMSWithoutBorders-BE-Publisher.git@main#egg=SwobBackendPublisher
 websocket==0.2.1
 websockets==10.4
 Werkzeug==2.2.3

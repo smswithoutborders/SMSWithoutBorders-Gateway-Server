@@ -18,6 +18,7 @@ import json
 import logging
 import threading
 import base64
+import bleach
 
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
@@ -95,6 +96,8 @@ def get_sync_url(user_id: str):
     """
     TODO: validate user_id before having it in production
     """
+    user_id = bleach.clean(user_id)
+
     try:
         port = app.config["SOCK_PORT"]
 
@@ -115,6 +118,9 @@ def get_users_platforms(user_id: str, session_id: str):
     """
     """
     global rmq_connection, rmq_channel
+
+    user_id = bleach.clean(user_id)
+    session_id = bleach.clean(session_id)
 
     try:
         data = json.loads(request.data, strict=False)
@@ -139,7 +145,6 @@ def get_users_platforms(user_id: str, session_id: str):
         hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
 
         try:
-
             user_password = data['password']
             user_public_key = data['public_key']
 
@@ -228,6 +233,8 @@ def incoming_sms_routing(platform):
     """
     """
     global rmq_connection, rmq_channel
+
+    platform = bleach.clean(platform)
 
     try:
         data = json.loads(request.data, strict=False)

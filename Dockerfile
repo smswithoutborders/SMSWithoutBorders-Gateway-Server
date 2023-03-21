@@ -8,8 +8,8 @@ WORKDIR /gateway_server
 
 COPY . .
 
-RUN pip install -r requirements.txt
-RUN pip install --force-reinstall "git+https://github.com/smswithoutborders/SMSWithoutBorders-BE-Publisher.git@main#egg=SwobBackendPublisher"
+RUN pip install --no-cache-dir wheel
+RUN pip install --no-cache-dir --force-reinstall -r requirements.txt
 
 # RUN pip config set global.cert /usr/local/share/ca-certificates/server.pem
 
@@ -26,4 +26,5 @@ CMD mod_wsgi-express start-server wsgi_script.py \
 	--ssl-certificate-file '${SSL_CERTIFICATE}' \
 	--ssl-certificate-key-file '${SSL_KEY}' \
 	--ssl-certificate-chain-file '${SSL_PEM}' \
-	--https-only --server-name '${HOST}' --https-port '${SSL_PORT}'
+	--https-only --server-name '${HOST}' --https-port '${SSL_PORT}' \
+	--log-to-terminal

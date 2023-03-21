@@ -1,8 +1,9 @@
 #!/usr/bin/bash
 
-# Usage: ./handshake.sh 
-# 	<user id file>
-#	<password>
+# Use below command to extract public from chain file
+# openssl x509 -in /tmp/server_pubkey.pub -pubkey -noout
+#
+# Usage: ./handshake.sh <path to public key file> <email address to send test email>
 
 server_public_key=$1
 echo "Server public key - $server_public_key"

@@ -6,7 +6,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src import sync, rsa, aes, publisher
+from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from sockets import ip_grap
 
 from src.users import Users
@@ -18,6 +18,7 @@ import json
 import logging
 import threading
 import base64
+import bleach
 
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
@@ -74,6 +75,12 @@ except Exception as error:
 # RMQ creations
 rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
+# create notifications exchanges
+try:
+    notifications.create_exchange(channel=rmq_channel)
+except Exception as error:
+    logging.exception(error)
+
 # Flask creations
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -89,6 +96,8 @@ def get_sync_url(user_id: str):
     """
     TODO: validate user_id before having it in production
     """
+    user_id = bleach.clean(user_id)
+
     try:
         port = app.config["SOCK_PORT"]
 
@@ -108,6 +117,11 @@ def get_sync_url(user_id: str):
 def get_users_platforms(user_id: str, session_id: str):
     """
     """
+    global rmq_connection, rmq_channel
+
+    user_id = bleach.clean(user_id)
+    session_id = bleach.clean(session_id)
+
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -131,7 +145,6 @@ def get_users_platforms(user_id: str, session_id: str):
         hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
 
         try:
-
             user_password = data['password']
             user_public_key = data['public_key']
 
@@ -188,14 +201,29 @@ def get_users_platforms(user_id: str, session_id: str):
                         hashingAlgorithm=hashingAlgorithm)
 
                 #TODO: customize exception just in case issue with encrypting for user
-
             except Exception as error:
                 logging.exception(error)
                 return '', 500
 
             else:
                 b64_encoded_shared_key = base64.b64encode(encrypted_shared_key)
+
+                try:
+                    if not publisher.not_active_connection(rmq_connection):
+                        rmq_connection, rmq_channel = publisher.init_rmq_connections()
+
+                    notifications.create_users_notifications(
+                            rmq_host = os.environ.get("RMQ_HOST"),
+                            channel = rmq_channel,
+                            queue_name = user_msisdn_hash,
+                            user_name = user_msisdn_hash,
+                            password = b64_encoded_shared_key.decode('utf-8'))
+
+                except Exception as error:
+                    logging.exception(error)
+
                 return jsonify({
+                    "msisdn_hash": user_msisdn_hash,
                     "shared_key": b64_encoded_shared_key.decode('utf-8'),
                     "user_platforms":user_platforms}), 200
 
@@ -205,6 +233,8 @@ def incoming_sms_routing(platform):
     """
     """
     global rmq_connection, rmq_channel
+
+    platform = bleach.clean(platform)
 
     try:
         data = json.loads(request.data, strict=False)

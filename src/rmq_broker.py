@@ -4,6 +4,8 @@ import os
 import pika
 import ssl
 import logging
+import json
+import requests
 
 default_routing_key = "default-smswithoutborders-routing-key" \
         if not os.environ.get("RMQ_ROUTING_KEY") \
@@ -22,14 +24,81 @@ default_queue_name = "default-smswithoutborders-queue" \
         else os.environ.get("RMQ_QUEUE_NAME")
 
 
-def create_queue(channel: pika.channel.Channel) -> None:
+def add_user(user_name: str, password: str, 
+          rmq_host: str='127.0.0.1', rmq_port: str='15672') -> None:
     """
     """
-    channel.queue_declare(default_queue_name, durable=True)
+    try:
+        add_user_url = f"http://{rmq_host}:{rmq_port}/api/users/{user_name}"
+
+        add_user_data = { 
+                "password": password,
+                "tags": "monitoring" 
+        }
+
+        add_user_response = requests.put(url=add_user_url, json=add_user_data, 
+                                         auth=(os.environ.get("RABBITMQ_DEFAULT_USER"), 
+                                               os.environ.get("RABBITMQ_DEFAULT_PASS")))
+
+        if add_user_response.status_code in [201, 204]:
+            logging.debug("[*] New user added")
+            logging.debug("[*] User tag set")
+
+            set_permissions_url = f"http://{rmq_host}:{rmq_port}/api/permissions/%2F/{user_name}"
+
+            """
+            set_permissions_data = {
+                "configure":f"^({default_exchange_name}|{user_name}_.*)$",
+                "write":f"^({default_exchange_name}|{user_name}_.*)$",
+                "read":f"^({default_exchange_name}|{user_name}_.*)$"
+            }
+            """
+            set_permissions_data = {
+                "configure":f".*",
+                "write":".*",
+                "read":".*"
+            }
+
+            set_permissions_response = requests.put(url=set_permissions_url, 
+                                                    json=set_permissions_data,
+                                                    auth=(os.environ.get("RABBITMQ_DEFAULT_USER"),
+                                                        os.environ.get("RABBITMQ_DEFAULT_PASS")))
+
+            if set_permissions_response.status_code in [201, 204]:
+                logging.debug("[*] User privilege set")
+                return None
+
+            else:
+                logging.error("Failed to set user privilege")
+                set_permissions_response.raise_for_status()
+
+        else:
+            logging.error("Failed to add new user")
+            add_user_response.raise_for_status()
+
+    except Exception as error:
+        raise
+
+
+def create_queue(channel: pika.channel.Channel, 
+        queue_name:str=None, durable:bool=True, 
+        exchange_name:str=None, routing_key:str=None) -> None:
+    """
+    """
+    if not queue_name:
+        queue_name = default_queue_name
+
+    if not exchange_name:
+        exchange_name = default_exchange_name
+
+    if not routing_key:
+        routing_key = default_routing_key
+
+    channel.queue_declare(queue_name, durable=durable)
     channel.queue_bind(
-            queue=default_queue_name,
-            exchange=default_exchange_name,
-            routing_key=default_routing_key)
+            queue=queue_name,
+            exchange=exchange_name,
+            routing_key=routing_key)
 
     logging.debug("queue created successfully")
 
@@ -44,12 +113,15 @@ def create_rmq_channel(connection: pika.BlockingConnection) -> pika.channel.Chan
 
 def create_rmq_exchange(
         channel: pika.channel.Channel,
-        exchange_name: str=default_exchange_name,
+        exchange_name: str=None,
         exchange_type: str="topic") -> None: 
     """
     """
+    if not exchange_name:
+        exchange_name = default_exchange_name
+
     channel.exchange_declare(
-        exchange=default_exchange_name,
+        exchange=exchange_name,
         exchange_type=exchange_type,
         durable=True)
 

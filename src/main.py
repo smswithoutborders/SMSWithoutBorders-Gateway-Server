@@ -112,6 +112,36 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
+@app.route('/v%s/sync/users/<msisdn_hash>/verification' % (__api_version_number), methods=['POST'])
+def get_sync_url(msisdn_hash: str):
+    """
+    - encrypt user shared key
+    - compare input shared key against encrypted copy
+    """
+    msisdn_hash = bleach.clean(msisdn_hash)
+
+    try:
+        data = json.loads(request.data, strict=False)
+    except Exception as error:
+        logging.exception(error)
+
+        return 'poorly formed json', 400
+    else:
+        try:
+            user = users.find(msisdn_hash=user_msisdn_hash)
+        except Exception as error:
+            app.logger.exception(error)
+            return '', 400 
+        else:
+            user_shared_key = user.shared_key
+            encrypted_shared_key = \
+                    rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
+                                                     public_key=user_public_key, 
+                                                     mgf1ParameterSpec=mgf1ParameterSpec, 
+                                                     hashingAlgorithm=hashingAlgorithm)
+
+            return jsonify({"shared_key": encrypted_shared_key}), 200
+
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])
 def get_users_platforms(user_id: str, session_id: str):
@@ -173,7 +203,7 @@ def get_users_platforms(user_id: str, session_id: str):
                 user = users.find(msisdn_hash=user_msisdn_hash)
             except Exception as error:
                 app.logger.exception(error)
-                return '', 500 
+                return '', 403 
 
             user_shared_key = sync.generate_shared_key()
 

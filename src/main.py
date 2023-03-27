@@ -131,12 +131,17 @@ def verify_user_shared_key(msisdn_hash: str):
             user = users.find(msisdn_hash=msisdn_hash)
         except Exception as error:
             app.logger.exception(error)
-            return '', 400 
+            return '', 403 
         else:
             user_shared_key = user.shared_key
             user_public_key = user.public_key
-            mgf1ParameterSpec = user.mgf1ParameterSpec
+
+            # mgf1ParameterSpec = user.mgf1ParameterSpec
+            # logging.debug("user mgf param: %s", mgf1ParameterSpec)
+
             hashingAlgorithm = user.hashingAlgorithm
+
+            mgf1ParameterSpec = "sha1"
             encrypted_shared_key = \
                     rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
                                                      public_key=user_public_key, 
@@ -144,6 +149,8 @@ def verify_user_shared_key(msisdn_hash: str):
                                                      hashingAlgorithm=hashingAlgorithm)
 
             encrypted_shared_key =  base64.b64encode(encrypted_shared_key)
+            logging.debug("encrypted_key: %s", encrypted_shared_key)
+
             return jsonify({"shared_key": encrypted_shared_key.decode('utf-8')}), 200
 
 
@@ -176,7 +183,9 @@ def get_users_platforms(user_id: str, session_id: str):
             - update the android to have hashingAlgorithm
         '''
         mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
+        # mgf1ParameterSpec = 'sha1'
         hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
+        # hashingAlgorithm = 'sha256'
 
         try:
             user_password = data['password']

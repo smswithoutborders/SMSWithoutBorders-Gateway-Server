@@ -113,7 +113,7 @@ def get_sync_url(user_id: str):
         return sockets_url, 200
 
 @app.route('/v%s/sync/users/<msisdn_hash>/verification' % (__api_version_number), methods=['POST'])
-def get_sync_url(msisdn_hash: str):
+def verify_user_shared_key(msisdn_hash: str):
     """
     - encrypt user shared key
     - compare input shared key against encrypted copy

@@ -128,19 +128,23 @@ def verify_user_shared_key(msisdn_hash: str):
         return 'poorly formed json', 400
     else:
         try:
-            user = users.find(msisdn_hash=user_msisdn_hash)
+            user = users.find(msisdn_hash=msisdn_hash)
         except Exception as error:
             app.logger.exception(error)
             return '', 400 
         else:
             user_shared_key = user.shared_key
+            user_public_key = user.public_key
+            mgf1ParameterSpec = user.mgf1ParameterSpec
+            hashingAlgorithm = user.hashingAlgorithm
             encrypted_shared_key = \
                     rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
                                                      public_key=user_public_key, 
                                                      mgf1ParameterSpec=mgf1ParameterSpec, 
                                                      hashingAlgorithm=hashingAlgorithm)
 
-            return jsonify({"shared_key": encrypted_shared_key}), 200
+            encrypted_shared_key =  base64.b64encode(encrypted_shared_key)
+            return jsonify({"shared_key": encrypted_shared_key.decode('utf-8')}), 200
 
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])

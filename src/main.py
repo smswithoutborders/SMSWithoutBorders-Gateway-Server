@@ -3,8 +3,8 @@
 # Use this for IDEs to check data types
 #https://docs.python.org/3/library/typing.html
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS, cross_origin
 
 from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from sockets import ip_grap
@@ -85,11 +85,25 @@ except Exception as error:
 app = Flask(__name__)
 app.config.from_object(__name__)
 
+#CORS(
+#    app,
+#    resources={r"/*": {
+#        "origins": json.loads(os.environ.get("ORIGINS"))}},
+#    supports_credentials=True,
+#)
+
 CORS(
     app,
-    origins=os.environ.get("ORIGINS")
+    origins=json.loads(os.environ.get("ORIGINS")),
     supports_credentials=True,
 )
+
+#@app.before_request
+#def after_request_func():
+#    response = Response()
+#    response.headers['Access-Control-Allow-Origin'] = "https://smswithoutborders.com"
+#
+#    return response
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
@@ -300,6 +314,7 @@ def get_users_platforms(user_id: str, session_id: str):
 
 
 @app.route('/sms/platform/<platform>', methods=['POST'])
+@cross_origin(origins="*")
 def incoming_sms_routing(platform):
     """
     """

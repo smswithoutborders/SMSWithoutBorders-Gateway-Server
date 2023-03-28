@@ -87,7 +87,7 @@ app.config.from_object(__name__)
 
 CORS(
     app,
-    origins="*",
+    origins=os.environ.get("ORIGINS")
     supports_credentials=True,
 )
 
@@ -112,7 +112,7 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
-@app.route('/v%s/sync/users/refresh' % (__api_version_number), methods=['DELETE'])
+@app.route('/v%s/sync/users' % (__api_version_number), methods=['DELETE'])
 def refresh_users_shared_key():
     """
     """
@@ -140,6 +140,7 @@ def refresh_users_shared_key():
 
 
 @app.route('/v%s/sync/users/<msisdn_hash>/verification' % (__api_version_number), methods=['POST'])
+@cross_origin(origins="*")
 def verify_user_shared_key(msisdn_hash: str):
     """
     - encrypt user shared key

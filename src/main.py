@@ -112,6 +112,33 @@ def get_sync_url(user_id: str):
     else:
         return sockets_url, 200
 
+@app.route('/v%s/sync/users/refresh' % (__api_version_number), methods=['DELETE'])
+def refresh_users_shared_key():
+    """
+    """
+    try:
+        data = json.loads(request.data, strict=False)
+    except Exception as error:
+        logging.exception(error)
+
+        return 'poorly formed json', 400
+
+    if not 'msisdn_hashed' in data:
+        return 'missing msisdn', 400
+
+    msisdn_hash = data['msisdn_hashed']
+
+    try:
+        user = users.find(msisdn_hash=msisdn_hash)
+
+        users.delete(user)
+    except Exception as error:
+        logging.exception(error)
+        return '', 500
+
+    return 'OK', 200
+
+
 @app.route('/v%s/sync/users/<msisdn_hash>/verification' % (__api_version_number), methods=['POST'])
 def verify_user_shared_key(msisdn_hash: str):
     """

@@ -1,6 +1,6 @@
 FROM python:3.9
 
-RUN apt update && apt install -y apache2 apache2-dev python3-pip
+RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3
 
 WORKDIR /gateway_server
 
@@ -17,13 +17,29 @@ RUN pip install --no-cache-dir --force-reinstall -r requirements.txt
 RUN usermod -u 1000 www-data
 RUN usermod -G root www-data
 
-CMD mod_wsgi-express start-server wsgi_script.py \
+ARG PORT=$PORT
+ARG HOST
+ARG SSL_CERTIFICATE
+ARG SSL_KEY
+ARG SSL_PEM
+ARG SSL_PORT
+
+RUN mod_wsgi-express setup-server wsgi_script.py \
+	--setup-only \
+	--server-root /tmp/httpd/ \
 	--user www-data \
 	--group www-data \
-	--allow-localhost \
-	--port '${PORT}' \
-	--ssl-certificate-file '${SSL_CERTIFICATE}' \
-	--ssl-certificate-key-file '${SSL_KEY}' \
-	--ssl-certificate-chain-file '${SSL_PEM}' \
-	--server-name '${HOST}' --https-port '${SSL_PORT}' \
+	--port $PORT \
+	--server-name ${HOST} \
+	--ssl-certificate-file ${SSL_CERTIFICATE} \
+	--ssl-certificate-key-file ${SSL_KEY} \
+	--ssl-certificate-chain-file ${SSL_PEM} \
+	--https-port ${SSL_PORT} \
 	--log-to-terminal
+
+RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf
+RUN echo "Include '/gateway_server/apache.conf'" | \
+	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
+	mv /tmp/file.txt /tmp/httpd/httpd.conf
+
+CMD /tmp/httpd/apachectl -k start && tail -f /dev/null

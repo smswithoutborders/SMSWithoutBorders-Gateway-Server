@@ -23,6 +23,7 @@ RUN usermod -G root www-data
 CMD mod_wsgi-express start-server wsgi_script.py \
 	--user www-data \
 	--group www-data \
+	--allow-localhost \
 	--port '${PORT}' \
 	--ssl-certificate-file '${SSL_CERTIFICATE}' \
 	--ssl-certificate-key-file '${SSL_KEY}' \

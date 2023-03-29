@@ -26,5 +26,5 @@ CMD mod_wsgi-express start-server wsgi_script.py \
 	--ssl-certificate-file '${SSL_CERTIFICATE}' \
 	--ssl-certificate-key-file '${SSL_KEY}' \
 	--ssl-certificate-chain-file '${SSL_PEM}' \
-	--https-only --server-name '${HOST}' --https-port '${SSL_PORT}' \
+	--server-name '${HOST}' --https-port '${SSL_PORT}' \
 	--log-to-terminal

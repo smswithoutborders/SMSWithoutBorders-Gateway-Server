@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir --force-reinstall -r requirements.txt
 
 # RUN pip config set global.cert /usr/local/share/ca-certificates/server.pem
 
-# EXPOSE ${SSL_PORT}
+EXPOSE ${SSL_PORT}
+EXPOSE ${PORT}
 
 # CMD ["flask", "--app", "src/main", "run"]
 RUN usermod -u 1000 www-data

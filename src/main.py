@@ -164,17 +164,13 @@ def refresh_users_shared_key():
     return 'OK', 200
 
 
-@app.route('/v%s/sync/users/<msisdn_hash>/verification' % (__api_version_number), methods=['POST'])
+@app.route('/v%s/sync/users/verification' % (__api_version_number), methods=['POST'])
 @cross_origin(origins="*")
-def verify_user_shared_key(msisdn_hash: str):
+def verify_user_shared_key():
     """
     - encrypt user shared key
     - compare input shared key against encrypted copy
     """
-    msisdn_hash = bleach.clean(msisdn_hash)
-
-    msisdn_decoded = base64.b64decode(msisdn_hash)
-
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -184,6 +180,8 @@ def verify_user_shared_key(msisdn_hash: str):
     else:
         if not 'msisdn' in data:
             return 'missing msisdn', 400
+        if not 'msisdn_signature' in data:
+            return 'missing signature', 400
 
         try:
             mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
@@ -195,6 +193,8 @@ def verify_user_shared_key(msisdn_hash: str):
             decrypted_msisdn = rsa.SecurityRSA.decrypt(data['msisdn'], 
                     private_key_filepath=RSA_PR_KEY,
                     mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)
+
+            app.logger.debug("%s", decrypted_msisdn)
 
         except Exception as error:
             app.logger.exception(error)
@@ -209,7 +209,10 @@ def verify_user_shared_key(msisdn_hash: str):
                 return 'no public key for user', 403
 
             try:
-                if not rsa.SecurityRSA.sign(msisdn_hash, user.public_key):
+                rsa.SecurityRSA.sign(message=decrypted_msisdn, 
+                        signature=base64.b64decode(data['msisdn_signature']), 
+                        public_key=user.public_key)
+            except (ValueError, TypeError) as error:
                     return 'unknown signature request', 403
             except Exception as error:
                 app.logger.exception(error)

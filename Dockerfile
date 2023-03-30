@@ -26,7 +26,11 @@ ARG SSL_PORT
 
 RUN mod_wsgi-express setup-server wsgi_script.py \
 	--setup-only \
-	--server-root /tmp/httpd/ \
+	--server-root /tmp/httpd \
+	--error-log-name /tmp/httpd/error.log \
+	--access-log-name /tmp/httpd/error.log \
+	--startup-log-name /tmp/httpd/error.log \
+	--log-level='debug' \
 	--user www-data \
 	--group www-data \
 	--port $PORT \
@@ -34,12 +38,13 @@ RUN mod_wsgi-express setup-server wsgi_script.py \
 	--ssl-certificate-file ${SSL_CERTIFICATE} \
 	--ssl-certificate-key-file ${SSL_KEY} \
 	--ssl-certificate-chain-file ${SSL_PEM} \
-	--https-port ${SSL_PORT} \
-	--log-to-terminal
+	--https-port ${SSL_PORT}
 
 RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf
 RUN echo "Include '/gateway_server/apache.conf'" | \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 
-CMD /tmp/httpd/apachectl -k start && tail -f /dev/null
+CMD /tmp/httpd/apachectl -k start && \
+	touch /tmp/httpd/error.log && \
+	tail -n 50 -f /tmp/httpd/error.log

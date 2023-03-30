@@ -146,7 +146,7 @@ class SecurityRSA:
         return encrypted_text
 
     @staticmethod
-    def sign(message: str, public_key: str) -> bool:
+    def sign(message: str, signature: str, public_key: str) -> bool:
         """
         """
         key = RSA.importKey(public_key)
@@ -154,8 +154,6 @@ class SecurityRSA:
         h = SHA512.new(message)
 
         verifier = pss.new(key)
-
-        signature = pss.new(key).sign(h)
 
         try:
             return verifier.verify(h, signature)

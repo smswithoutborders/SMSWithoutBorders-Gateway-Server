@@ -3,8 +3,8 @@
 # Use this for IDEs to check data types
 #https://docs.python.org/3/library/typing.html
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS, cross_origin
 
 from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from sockets import ip_grap
@@ -28,7 +28,7 @@ __api_version_number = 2
 HOST = os.environ.get("HOST")
 SOCK_PORT = os.environ.get("SOCK_PORT")
 RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
-
+SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
 
 # Required for BE-Publisher Lib
 MYSQL_BE_HOST=os.environ["MYSQL_HOST"] \
@@ -85,11 +85,36 @@ except Exception as error:
 app = Flask(__name__)
 app.config.from_object(__name__)
 
+#CORS(
+#    app,
+#    resources={r"/*": {
+#        "origins": json.loads(os.environ.get("ORIGINS"))}},
+#    supports_credentials=True,
+#)
+
 CORS(
     app,
-    origins="*",
+    origins=json.loads(os.environ.get("ORIGINS")),
     supports_credentials=True,
 )
+
+#@app.before_request
+#def after_request_func():
+#    response = Response()
+#    response.headers['Access-Control-Allow-Origin'] = "https://smswithoutborders.com"
+#
+#    return response
+
+@app.after_request
+def after_request(response):
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubdomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = "script-src 'self'; object-src 'self'"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Permissions-Policy"] = "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), clipboard-read=(), clipboard-write=(), cross-origin-isolated=(), display-capture=(), document-domain=(), encrypted-media=(), execution-while-not-rendered=(), execution-while-out-of-viewport=(), fullscreen=(), gamepad=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), navigation-override=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), speaker=(), speaker-selection=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()"
+    return response
+
 
 @app.route('/v%s/sync/users/<user_id>' % (__api_version_number), methods=['GET'])
 def get_sync_url(user_id: str):
@@ -111,6 +136,124 @@ def get_sync_url(user_id: str):
         return '', 500
     else:
         return sockets_url, 200
+
+@app.route('/v%s/sync/users' % (__api_version_number), methods=['DELETE'])
+def refresh_users_shared_key():
+    """
+    """
+    try:
+        data = json.loads(request.data, strict=False)
+    except Exception as error:
+        logging.exception(error)
+
+        return 'poorly formed json', 400
+
+    if not 'msisdn_hashed' in data:
+        return 'missing msisdn', 400
+
+    SHARED_KEY = None
+    with open(SHARED_KEY_FILE, 'r') as f:
+        SHARED_KEY = f.readline().strip()[:32]
+
+    msisdn_hash = data['msisdn_hashed']
+
+    # msisdn_hash = base64.b64decode(msisdn_hash)
+    iv = msisdn_hash[:16].encode("utf8")
+    msisdn_hash = bytes.fromhex(msisdn_hash[16:])
+
+    try:
+        msisdn_hash = aes.AESCipher.decrypt(
+                data=msisdn_hash, 
+                iv=iv, 
+                shared_key=SHARED_KEY)
+    except Exception as error:
+        app.logger.exception(error)
+        return 'failed to decrypt', 403
+    else:
+        try:
+            user = users.find(msisdn_hash=msisdn_hash)
+
+            users.delete(user)
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
+
+        return 'OK', 200
+
+
+@app.route('/v%s/sync/users/verification' % (__api_version_number), methods=['POST'])
+@cross_origin(origins="*")
+def verify_user_shared_key():
+    """
+    - encrypt user shared key
+    - compare input shared key against encrypted copy
+    """
+    try:
+        data = json.loads(request.data, strict=False)
+    except Exception as error:
+        logging.exception(error)
+
+        return 'poorly formed json', 400
+    else:
+        if not 'msisdn' in data:
+            return 'missing msisdn', 400
+        if not 'msisdn_signature' in data:
+            return 'missing signature', 400
+
+        try:
+            mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
+            # mgf1ParameterSpec = 'sha1'
+
+            hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
+            # hashingAlgorithm = 'sha256'
+
+            decrypted_msisdn = rsa.SecurityRSA.decrypt(data['msisdn'], 
+                    private_key_filepath=RSA_PR_KEY,
+                    mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)
+
+            app.logger.debug("%s", decrypted_msisdn)
+
+        except Exception as error:
+            app.logger.exception(error)
+            return 'error with decryption', 403 
+        else:
+            user = users.find(msisdn_hash=decrypted_msisdn)
+
+            if not user.shared_key:
+                return 'no shared key for user', 403
+
+            if not user.public_key:
+                return 'no public key for user', 403
+
+            try:
+                rsa.SecurityRSA.sign(message=decrypted_msisdn, 
+                        signature=base64.b64decode(data['msisdn_signature']), 
+                        public_key=user.public_key)
+            except (ValueError, TypeError) as error:
+                    return 'unknown signature request', 403
+            except Exception as error:
+                app.logger.exception(error)
+                return 'signing check error', 400
+            else:
+                user_shared_key = user.shared_key
+                user_public_key = user.public_key
+
+                # mgf1ParameterSpec = user.mgf1ParameterSpec
+                # logging.debug("user mgf param: %s", mgf1ParameterSpec)
+
+                hashingAlgorithm = user.hashingAlgorithm
+
+                mgf1ParameterSpec = "sha1"
+                encrypted_shared_key = \
+                        rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
+                                                         public_key=user_public_key, 
+                                                         mgf1ParameterSpec=mgf1ParameterSpec, 
+                                                         hashingAlgorithm=hashingAlgorithm)
+
+                encrypted_shared_key =  base64.b64encode(encrypted_shared_key)
+                logging.debug("encrypted_key: %s", encrypted_shared_key)
+
+                return jsonify({"shared_key": encrypted_shared_key.decode('utf-8')}), 200
 
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])
@@ -142,7 +285,9 @@ def get_users_platforms(user_id: str, session_id: str):
             - update the android to have hashingAlgorithm
         '''
         mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
+        # mgf1ParameterSpec = 'sha1'
         hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
+        # hashingAlgorithm = 'sha256'
 
         try:
             user_password = data['password']
@@ -173,7 +318,7 @@ def get_users_platforms(user_id: str, session_id: str):
                 user = users.find(msisdn_hash=user_msisdn_hash)
             except Exception as error:
                 app.logger.exception(error)
-                return '', 500 
+                return '', 403 
 
             user_shared_key = sync.generate_shared_key()
 
@@ -229,6 +374,7 @@ def get_users_platforms(user_id: str, session_id: str):
 
 
 @app.route('/sms/platform/<platform>', methods=['POST'])
+@cross_origin(origins="*")
 def incoming_sms_routing(platform):
     """
     """

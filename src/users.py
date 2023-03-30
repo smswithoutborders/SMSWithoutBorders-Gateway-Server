@@ -168,6 +168,28 @@ class Users(User):
         finally:
             cursor.close()
 
+
+    def delete(self, user: User) -> None:
+        """
+        delete
+        """
+        cursor = self.__get_cursor__()
+
+        delete_query = (f"DELETE FROM {self.TABLE_NAME} "
+                "WHERE msisdn_hash = %s")
+
+        try:
+            cursor.execute(delete_query, (user.msisdn_hash, ))
+
+            self.connection.commit()
+
+        except Exception as error:
+            raise error
+
+        finally:
+            cursor.close()
+
+
     def find(self, msisdn_hash: str):
         """
         """

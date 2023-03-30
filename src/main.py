@@ -173,6 +173,8 @@ def verify_user_shared_key(msisdn_hash: str):
     """
     msisdn_hash = bleach.clean(msisdn_hash)
 
+    msisdn_decoded = base64.b64decode(msisdn_hash)
+
     try:
         data = json.loads(request.data, strict=False)
     except Exception as error:
@@ -180,35 +182,58 @@ def verify_user_shared_key(msisdn_hash: str):
 
         return 'poorly formed json', 400
     else:
+        if not 'msisdn' in data:
+            return 'missing msisdn', 400
+
         try:
-            user = users.find(msisdn_hash=msisdn_hash)
+            mgf1ParameterSpec = data['mgf1ParameterSpec'] if 'mgf1ParameterSpec' in data else 'sha1'
+            # mgf1ParameterSpec = 'sha1'
+
+            hashingAlgorithm = data['hashingAlgorithm'] if 'hashingAlgorithm' in data else 'sha256'
+            # hashingAlgorithm = 'sha256'
+
+            decrypted_msisdn = rsa.SecurityRSA.decrypt(data['msisdn'], 
+                    private_key_filepath=RSA_PR_KEY,
+                    mgf1ParameterSpec=mgf1ParameterSpec, hashingAlgorithm=hashingAlgorithm)
+
         except Exception as error:
             app.logger.exception(error)
-            return '', 403 
+            return 'error with decryption', 403 
         else:
+            user = users.find(msisdn_hash=decrypted_msisdn)
 
             if not user.shared_key:
                 return 'no shared key for user', 403
 
-            user_shared_key = user.shared_key
-            user_public_key = user.public_key
+            if not user.public_key:
+                return 'no public key for user', 403
 
-            # mgf1ParameterSpec = user.mgf1ParameterSpec
-            # logging.debug("user mgf param: %s", mgf1ParameterSpec)
+            try:
+                if not rsa.SecurityRSA.sign(msisdn_hash, user.public_key):
+                    return 'unknown signature request', 403
+            except Exception as error:
+                app.logger.exception(error)
+                return 'signing check error', 400
+            else:
+                user_shared_key = user.shared_key
+                user_public_key = user.public_key
 
-            hashingAlgorithm = user.hashingAlgorithm
+                # mgf1ParameterSpec = user.mgf1ParameterSpec
+                # logging.debug("user mgf param: %s", mgf1ParameterSpec)
 
-            mgf1ParameterSpec = "sha1"
-            encrypted_shared_key = \
-                    rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
-                                                     public_key=user_public_key, 
-                                                     mgf1ParameterSpec=mgf1ParameterSpec, 
-                                                     hashingAlgorithm=hashingAlgorithm)
+                hashingAlgorithm = user.hashingAlgorithm
 
-            encrypted_shared_key =  base64.b64encode(encrypted_shared_key)
-            logging.debug("encrypted_key: %s", encrypted_shared_key)
+                mgf1ParameterSpec = "sha1"
+                encrypted_shared_key = \
+                        rsa.SecurityRSA.encrypt_with_key( data=user_shared_key, 
+                                                         public_key=user_public_key, 
+                                                         mgf1ParameterSpec=mgf1ParameterSpec, 
+                                                         hashingAlgorithm=hashingAlgorithm)
 
-            return jsonify({"shared_key": encrypted_shared_key.decode('utf-8')}), 200
+                encrypted_shared_key =  base64.b64encode(encrypted_shared_key)
+                logging.debug("encrypted_key: %s", encrypted_shared_key)
+
+                return jsonify({"shared_key": encrypted_shared_key.decode('utf-8')}), 200
 
 
 @app.route('/v%s/sync/users/<user_id>/sessions/<session_id>/' % (__api_version_number), methods=['POST'])

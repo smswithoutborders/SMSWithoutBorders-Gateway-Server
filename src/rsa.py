@@ -2,8 +2,10 @@
 
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
-from Cryptodome.Hash import SHA256, SHA1
+from Cryptodome.Hash import SHA512, SHA256, SHA1
 from Cryptodome.Signature import pss
+from Crypto import Random
+
 import base64
 import logging
 
@@ -142,3 +144,22 @@ class SecurityRSA:
         encrypted_text = public_key.encrypt(data)
 
         return encrypted_text
+
+    @staticmethod
+    def sign(message: str, public_key: str) -> bool:
+        """
+        """
+        key = RSA.importKey(public_key)
+
+        h = SHA512.new(message)
+
+        verifier = pss.new(key)
+
+        signature = pss.new(key).sign(h)
+
+        try:
+            return verifier.verify(h, signature)
+        except (ValueError, TypeError) as error:
+            raise error
+
+

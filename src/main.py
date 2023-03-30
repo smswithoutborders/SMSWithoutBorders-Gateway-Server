@@ -28,7 +28,7 @@ __api_version_number = 2
 HOST = os.environ.get("HOST")
 SOCK_PORT = os.environ.get("SOCK_PORT")
 RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
-
+SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
 
 # Required for BE-Publisher Lib
 MYSQL_BE_HOST=os.environ["MYSQL_HOST"] \
@@ -151,17 +151,34 @@ def refresh_users_shared_key():
     if not 'msisdn_hashed' in data:
         return 'missing msisdn', 400
 
+    SHARED_KEY = None
+    with open(SHARED_KEY_FILE, 'r') as f:
+        SHARED_KEY = f.readline().strip()[:32]
+
     msisdn_hash = data['msisdn_hashed']
 
+    # msisdn_hash = base64.b64decode(msisdn_hash)
+    iv = msisdn_hash[:16].encode("utf8")
+    msisdn_hash = bytes.fromhex(msisdn_hash[16:])
+
     try:
-        user = users.find(msisdn_hash=msisdn_hash)
-
-        users.delete(user)
+        msisdn_hash = aes.AESCipher.decrypt(
+                data=msisdn_hash, 
+                iv=iv, 
+                shared_key=SHARED_KEY)
     except Exception as error:
-        logging.exception(error)
-        return '', 500
+        app.logger.exception(error)
+        return 'failed to decrypt', 403
+    else:
+        try:
+            user = users.find(msisdn_hash=msisdn_hash)
 
-    return 'OK', 200
+            users.delete(user)
+        except Exception as error:
+            logging.exception(error)
+            return '', 500
+
+        return 'OK', 200
 
 
 @app.route('/v%s/sync/users/verification' % (__api_version_number), methods=['POST'])

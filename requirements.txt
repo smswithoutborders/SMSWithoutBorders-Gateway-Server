@@ -9,7 +9,7 @@ cryptography==41.0.0
 dataclasses-json==0.5.7
 Flask==2.3.2
 Flask-Cors==3.0.10
-gevent==22.10.2
+gevent==23.9.0
 google-api-core==2.11.0
 google-api-python-client==2.66.0
 google-auth==2.16.2

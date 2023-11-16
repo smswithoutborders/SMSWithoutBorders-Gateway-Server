@@ -55,6 +55,6 @@ urllib3==1.26.15
 webencodings==0.5.1
 websocket==0.2.1
 websockets==10.4
-Werkzeug==2.2.3
+Werkzeug==2.3.8
 zope.event==4.5.0
 zope.interface==5.5.1

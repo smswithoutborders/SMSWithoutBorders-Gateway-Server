@@ -3,6 +3,7 @@ import imaplib
 import logging
 import email
 import time
+
 # TODO from concurrent.futures import ThreadPoolExecutor
 
 from src.process_incoming_messages import process_data
@@ -108,7 +109,7 @@ def process_single_email(imap, email_id):
         email_message = email.message_from_bytes(raw_email)
         content = extract_email_content(email_message)
 
-        processed_data = process_data(content, BEPubLib, users)
+        processed_data = process_data(content["body"], BEPubLib, users)
 
         logger.debug("Encrypted data: %s", processed_data)
 
@@ -129,7 +130,7 @@ def process_unread_emails(imap):
     try:
         imap.select(MAIL_FOLDER)
         logger.debug("Searching for unread emails...")
-        _, data = imap.search(None, "(UNSEEN)")
+        _, data = imap.search(None, '(UNSEEN SUBJECT "GATEWAY")')
 
         # TODO
         # with ThreadPoolExecutor(max_workers=5) as executor:

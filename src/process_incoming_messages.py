@@ -34,6 +34,12 @@ class DecryptError(Exception):
 
 def process_data(data, BEPubLib, users):
     """Process incoming data"""
+    try:
+        data = json.loads(data, strict=False)
+    except Exception as error:
+        logging.error("Failed to parse JSON data: %s", error)
+        raise InvalidDataError("Invalid JSON data format. Please check your input.")
+
     if not "MSISDN" in data:
         logger.error("Missing MSISDN")
         raise InvalidDataError("Missing MSISDN")

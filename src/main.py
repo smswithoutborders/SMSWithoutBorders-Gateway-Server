@@ -447,12 +447,7 @@ def incoming_sms_routing(platform):
 
     platform = bleach.clean(platform)
 
-    try:
-        data = json.loads(request.data, strict=False)
-    except Exception as error:
-        logging.exception(error)
-
-        return "poorly formed json", 400
+    data = request.data
 
     try:
         processed_data = process_data(data, BEPubLib, users)

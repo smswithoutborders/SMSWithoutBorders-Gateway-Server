@@ -1,22 +1,24 @@
 FROM python:3.9
 
-RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3
+# Install necessary system dependencies
+RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3 supervisor
 
+# Set the working directory
 WORKDIR /gateway_server
 
-# COPY ["src", "apache.wsgi", "requirements.txt", "/gateway_server"]
-
+# Copy the entire project directory into the container
 COPY . .
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Install Python dependencies
 RUN pip install --no-cache-dir wheel
 RUN pip install --no-cache-dir --force-reinstall -r requirements.txt
 
-# RUN pip config set global.cert /usr/local/share/ca-certificates/server.pem
-
-# CMD ["flask", "--app", "src/main", "run"]
+# Set permissions
 RUN usermod -u 1000 www-data
 RUN usermod -G root www-data
 
+# Set up Apache with mod_wsgi
 ARG PORT=$PORT
 ARG HOST
 ARG SSL_CERTIFICATE
@@ -40,11 +42,10 @@ RUN mod_wsgi-express setup-server wsgi_script.py \
 	--ssl-certificate-chain-file ${SSL_PEM} \
 	--https-port ${SSL_PORT}
 
+# Update Apache configuration
 RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf
 RUN echo "Include '/gateway_server/apache.conf'" | \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 
-CMD /tmp/httpd/apachectl -k start && \
-	touch /tmp/httpd/error.log && \
-	tail -n 50 -f /tmp/httpd/error.log
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

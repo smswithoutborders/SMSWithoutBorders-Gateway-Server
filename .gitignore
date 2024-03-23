@@ -14,3 +14,4 @@ tmp/*
 data
 *.sh
 repos/
+.env.*

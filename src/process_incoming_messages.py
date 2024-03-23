@@ -58,10 +58,10 @@ def validate_data(data):
     Raises:
         InvalidDataError: If required fields are missing.
     """
-    if "MSISDN" not in data:
-        logger.error("Missing MSISDN")
-        raise InvalidDataError("Missing MSISDN")
-    if "text" not in data:
+    if not data.get("MSISDN") and not data.get("address"):
+        logger.error("Missing MSISDN or address")
+        raise InvalidDataError("Missing MSISDN or address")
+    if not data.get("text"):
         logger.error("Missing Text")
         raise InvalidDataError("Missing Text")
 
@@ -110,7 +110,7 @@ def process_data(data, be_pub_lib, users):
         data = parse_json_data(data)
         validate_data(data)
 
-        user_msisdn = data["MSISDN"]
+        user_msisdn = data.get("MSISDN") or data.get("address")
         user_msisdn_hash = be_pub_lib.hasher(data=user_msisdn)
         user = users.find(msisdn_hash=user_msisdn_hash)
 

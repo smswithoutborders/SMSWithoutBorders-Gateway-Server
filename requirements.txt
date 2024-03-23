@@ -37,7 +37,7 @@ pyaes==1.6.1
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
-pycryptodome==3.14.1
+pycryptodome==3.19.1
 pycryptodomex==3.19.1
 pyparsing==3.0.9
 python-twitter-v2==0.7.9

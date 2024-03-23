@@ -1,13 +1,14 @@
 FROM python:3.9
 
 # Install necessary system dependencies
-RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3
+RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3 supervisor
 
 # Set the working directory
 WORKDIR /gateway_server
 
 # Copy the entire project directory into the container
 COPY . .
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Install Python dependencies
 RUN pip install --no-cache-dir wheel
@@ -47,8 +48,4 @@ RUN echo "Include '/gateway_server/apache.conf'" | \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 
-# CMD to start Apache and run the imap_listener module
-CMD python3 -m src.imap_listener && \
-	/tmp/httpd/apachectl -k start && \
-	touch /tmp/httpd/error.log && \
-	tail -n 50 -f /tmp/httpd/error.log
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

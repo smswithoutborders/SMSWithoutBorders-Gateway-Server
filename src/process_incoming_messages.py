@@ -1,3 +1,5 @@
+"""Module to process incoming data."""
+
 import logging
 import base64
 import json
@@ -11,48 +13,105 @@ logger = logging.getLogger(__name__)
 class UserNotFoundError(Exception):
     """Exception raised when user is not found."""
 
-    pass
-
 
 class SharedKeyError(Exception):
     """Exception raised when shared key is missing."""
-
-    pass
 
 
 class InvalidDataError(Exception):
     """Exception raised when data is invalid."""
 
-    pass
-
 
 class DecryptError(Exception):
     """Exception raised when decryption fails"""
 
-    pass
 
+def parse_json_data(data):
+    """
+    Parse JSON data.
 
-def process_data(data, BEPubLib, users):
-    """Process incoming data"""
+    Args:
+        data (str): JSON data to parse.
+
+    Returns:
+        dict: Parsed JSON data.
+
+    Raises:
+        InvalidDataError: If JSON parsing fails.
+    """
     try:
-        data = json.loads(data, strict=False)
-    except Exception as error:
-        logging.error("Failed to parse JSON data: %s", error)
-        raise InvalidDataError("Invalid JSON data format. Please check your input.")
+        return json.loads(data, strict=False)
+    except Exception as err:
+        logging.error("Failed to parse JSON data: %s", err)
+        raise InvalidDataError(
+            "Invalid JSON data format. Please check your input."
+        ) from err
 
-    if not "MSISDN" in data:
+
+def validate_data(data):
+    """
+    Validate incoming data.
+
+    Args:
+        data (dict): Incoming data to validate.
+
+    Raises:
+        InvalidDataError: If required fields are missing.
+    """
+    if "MSISDN" not in data:
         logger.error("Missing MSISDN")
         raise InvalidDataError("Missing MSISDN")
-
-    if not "text" in data:
+    if "text" not in data:
         logger.error("Missing Text")
         raise InvalidDataError("Missing Text")
 
-    text = data["text"]
-    user_msisdn = data["MSISDN"]
 
+def decrypt_text(text, shared_key):
+    """
+    Decrypt the provided text.
+
+    Args:
+        text (str): Encrypted text to decrypt.
+        shared_key (str): Shared key for decryption.
+
+    Returns:
+        str: Decrypted text.
+
+    Raises:
+        DecryptError: If decryption fails.
+    """
     try:
-        user_msisdn_hash = BEPubLib.hasher(data=user_msisdn)
+        text = base64.b64decode(text)
+        iv = text[:16]
+        text = text[16:]
+        decrypted_text = aes.AESCipher.decrypt(data=text, iv=iv, shared_key=shared_key)
+        return str(decrypted_text, "utf-8")
+    except Exception as err:
+        logger.error("Failed to Decrypt")
+        raise DecryptError("Failed to Decrypt") from err
+
+
+def process_data(data, be_pub_lib, users):
+    """
+    Process incoming data.
+
+    Args:
+        data (str): Incoming data in JSON format.
+        be_pub_lib: Backend Publishing library.
+        users: User database.
+
+    Returns:
+        str: Processed and encrypted data.
+
+    Raises:
+        Exception: If any error occurs during processing.
+    """
+    try:
+        data = parse_json_data(data)
+        validate_data(data)
+
+        user_msisdn = data["MSISDN"]
+        user_msisdn_hash = be_pub_lib.hasher(data=user_msisdn)
         user = users.find(msisdn_hash=user_msisdn_hash)
 
         if not user:
@@ -65,51 +124,20 @@ def process_data(data, BEPubLib, users):
             logging.error("no shared key for user, strange")
             raise SharedKeyError("Shared key error")
 
-        try:
-            text = base64.b64decode(text)
-        except Exception as error:
-            logger.error("Invalid Text Format")
-            raise InvalidDataError("Invalid Text Format")
-
-        iv = text[:16]
-        text = text[16:]
-        text = base64.b64decode(text)
-
-        try:
-            decrypted_text = aes.AESCipher.decrypt(
-                data=text, iv=iv, shared_key=shared_key
-            )
-        except Exception:
-            logger.error("Failed to Decrypt")
-            raise DecryptError("Failed to Decrypt")
-
-        decrypted_text = str(decrypted_text, "utf-8")
-        logger.debug("decrypted successfully...")
+        decrypted_text = decrypt_text(data["text"], shared_key)
 
         platform_letter = decrypted_text[0]
-        logger.debug("platform letter: %s", platform_letter)
-
-        platform_name = BEPubLib.get_platform_name_from_letter(
+        platform_name = be_pub_lib.get_platform_name_from_letter(
             platform_letter=platform_letter
-        )
-        logger.debug("platform name: %s", platform_name)
+        )["platform_name"]
 
-        platform_name = platform_name["platform_name"]
-
-        data = BEPubLib.get_grant_from_platform_name(
+        data = be_pub_lib.get_grant_from_platform_name(
             phone_number=user_msisdn, platform_name=platform_name
         )
         data["data"] = decrypted_text
         data["platform_name"] = platform_name
-        """
-        data = {"username":"dummy_data", 
-                "token":{"key":"dummy", "data":"dummy"},
-                "uniqueId":"1234567",
-                "phoneNumber_bash":user_msisdn_hash }
-        """
 
-        shared_key = os.environ["PUBLISHER_ENCRYPTION_KEY"]
-        shared_key = shared_key[:32]
+        shared_key = os.environ["PUBLISHER_ENCRYPTION_KEY"][:32]
 
         # Padding just in case shorter than required key size
         if len(shared_key) < 32:
@@ -119,9 +147,7 @@ def process_data(data, BEPubLib, users):
         data = aes.AESCipher.encrypt(shared_key=shared_key, data=data)
         data = base64.b64encode(data)
 
-        data = str(data, "utf-8")
-
-        return data
+        return str(data, "utf-8")
 
     except Exception as error:
         raise error

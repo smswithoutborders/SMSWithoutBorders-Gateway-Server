@@ -17,11 +17,10 @@ from src.users import Users
 from src.users_entity import UsersEntity
 
 IMAP_SERVER = os.environ["IMAP_SERVER"]
-IMAP_PORT = os.environ.get("IMAP_PORT") or 993
+IMAP_PORT = int(os.environ.get("IMAP_PORT", 993))
 IMAP_USERNAME = os.environ["IMAP_USERNAME"]
 IMAP_PASSWORD = os.environ["IMAP_PASSWORD"]
-MAIL_FOLDER = os.environ.get("MAIL_FOLDER") or "INBOX"
-
+MAIL_FOLDER = os.environ.get("MAIL_FOLDER", "INBOX")
 
 HOST = os.environ.get("HOST")
 SOCK_PORT = os.environ.get("SOCK_PORT")
@@ -64,23 +63,23 @@ MYSQL_PASSWORD = os.environ["MYSQL_PASSWORD"]
 MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
 
 # Database creations
-usersBEPUB = UsersEntity(
+users_bepub_entity = UsersEntity(
     mysql_host=MYSQL_BE_HOST,
     mysql_user=MYSQL_BE_USER,
     mysql_password=MYSQL_BE_PASSWORD,
     mysql_database=MYSQL_BE_DATABASE,
 )
 
-BEPubLib = Lib(usersBEPUB.db)
+bepub_lib = Lib(users_bepub_entity.db)
 
-usersEntity = UsersEntity(
+users_entity = UsersEntity(
     mysql_host=MYSQL_HOST,
     mysql_user=MYSQL_USER,
     mysql_password=MYSQL_PASSWORD,
     mysql_database=MYSQL_DATABASE,
 )
 
-users = Users(usersEntity)
+users = Users(users_entity)
 
 try:
     users.create_database_and_tables__()
@@ -127,7 +126,7 @@ def process_single_email(imap, email_id, rmq_connection, rmq_channel):
         email_message = email.message_from_bytes(raw_email)
         content = extract_email_content(email_message)
 
-        processed_data = process_data(content["body"], BEPubLib, users)
+        processed_data = process_data(content["body"], bepub_lib, users)
 
         logger.debug("Encrypted data: %s", processed_data)
 
@@ -135,6 +134,8 @@ def process_single_email(imap, email_id, rmq_connection, rmq_channel):
             rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
         publisher.publish(channel=rmq_channel, data=processed_data)
+
+        imap.store(email_id, "+FLAGS", "\\Deleted")
 
         logger.info("Successfully queued email %s", email_id)
 

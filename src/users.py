@@ -10,20 +10,18 @@ from src.users_entity import UsersEntity
 import mysql.connector
 from mysql.connector import errorcode
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
 class User:
 
     id = None
-
     public_key = None
-
     msisdn_hash = None
-
     shared_key = None
-
     mgf1ParameterSpec = None
- 
     hashingAlgorithm = None
-
 
 class Users(User):
     TABLES = {}
@@ -92,7 +90,7 @@ class Users(User):
                 self.userEntity.MYSQL_DATABASE))
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DB_CREATE_EXISTS:
-                logging.warning("Database [%s] creation: already exist",
+                logger.warning("Database [%s] creation: already exist",
                         self.userEntity.MYSQL_DATABASE)
             else:
                 raise err
@@ -110,11 +108,11 @@ class Users(User):
                 cursor.execute(table_description)
             except (mysql.connector.Error, Exception) as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    logging.warning("User table[%s] populate: already exist.", table_name)
+                    logger.warning("User table[%s] populate: already exist.", table_name)
                 else:
                     raise err
             else:
-                logging.info("User table[%s] populate: OK.", table_name)
+                logger.info("User table[%s] populate: OK.", table_name)
 
         cursor.close()
 

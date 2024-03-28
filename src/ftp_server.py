@@ -34,43 +34,15 @@ FTP_DIRECTORY = os.environ["FTP_DIRECTORY"]
 SSL_CERTIFICATE = os.environ["SSL_CERTIFICATE"]
 SSL_KEY = os.environ["SSL_KEY"]
 
-HOST = os.environ.get("HOST")
-SOCK_PORT = os.environ.get("SOCK_PORT")
-RSA_PR_KEY = os.environ.get("RSA_PR_KEY")
-SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
-
 # Required for BE-Publisher Lib
-MYSQL_BE_HOST = (
-    os.environ["MYSQL_HOST"]
-    if not os.environ.get("MYSQL_BE_HOST")
-    else os.environ.get("MYSQL_BE_HOST")
-)
-
-MYSQL_BE_USER = (
-    os.environ["MYSQL_USER"]
-    if not os.environ.get("MYSQL_BE_USER")
-    else os.environ.get("MYSQL_BE_USER")
-)
-
-MYSQL_BE_PASSWORD = (
-    os.environ["MYSQL_PASSWORD"]
-    if not os.environ.get("MYSQL_BE_PASSWORD")
-    else os.environ.get("MYSQL_BE_PASSWORD")
-)
-MYSQL_BE_DATABASE = (
-    os.environ["MYSQL_DATABASE"]
-    if not os.environ.get("MYSQL_BE_DATABASE")
-    else os.environ.get("MYSQL_BE_DATABASE")
-)
+MYSQL_BE_HOST = os.environ.get("MYSQL_BE_HOST", os.environ["MYSQL_HOST"])
+MYSQL_BE_USER = os.environ.get("MYSQL_BE_USER", os.environ["MYSQL_USER"])
+MYSQL_BE_PASSWORD = os.environ.get("MYSQL_BE_PASSWORD", os.environ["MYSQL_PASSWORD"])
+MYSQL_BE_DATABASE = os.environ.get("MYSQL_BE_DATABASE", os.environ["MYSQL_DATABASE"])
 
 # Required for storing user encryption information
-MYSQL_HOST = (
-    "127.0.0.1" if not os.environ.get("MYSQL_HOST") else os.environ.get("MYSQL_HOST")
-)
-MYSQL_USER = (
-    "root" if not os.environ.get("MYSQL_USER") else os.environ.get("MYSQL_USER")
-)
-
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
+MYSQL_USER = os.environ.get("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.environ["MYSQL_PASSWORD"]
 MYSQL_DATABASE = os.environ["MYSQL_DATABASE"]
 

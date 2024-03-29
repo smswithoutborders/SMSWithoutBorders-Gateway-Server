@@ -127,7 +127,6 @@ def process_unread_emails(imap, rmq_connection, rmq_channel):
     """
     try:
         imap.select(MAIL_FOLDER)
-        logger.debug("Searching for unread emails...")
         _, data = imap.search(None, "(UNSEEN)")
 
         with ThreadPoolExecutor(max_workers=5) as executor:

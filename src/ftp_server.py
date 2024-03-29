@@ -30,7 +30,8 @@ FTP_READ_LIMIT = int(os.environ.get("FTP_READ_LIMIT", 51200))
 FTP_WRITE_LIMIT = int(os.environ.get("FTP_WRITE_LIMIT", 51200))
 FTP_MAX_CON = int(os.environ.get("FTP_MAX_CON", 256))
 FTP_MAX_CON_PER_IP = int(os.environ.get("FTP_MAX_CON_PER_IP", 5))
-FTP_PASSIVE_PORTS = os.environ["FTP_PASSIVE_PORTS"].split("-")
+FTP_PASSIVE_PORTS = [int(p) for p in os.environ["FTP_PASSIVE_PORTS"].split("-")]
+print(FTP_PASSIVE_PORTS)
 FTP_DIRECTORY = os.environ["FTP_DIRECTORY"]
 SSL_CERTIFICATE = os.environ["SSL_CERTIFICATE"]
 SSL_KEY = os.environ["SSL_KEY"]
@@ -146,7 +147,7 @@ def main():
     handler.authorizer = authorizer
     handler.banner = "SmsWithoutBorders FTP Server"
     handler.permit_foreign_addresses = True
-    handler.passive_ports = range(int(FTP_PASSIVE_PORTS[0]), int(FTP_PASSIVE_PORTS[1]))
+    handler.passive_ports = range(FTP_PASSIVE_PORTS[0], FTP_PASSIVE_PORTS[1])
 
     handler.on_file_received = file_received
     handler.dtp_handler = dtp_handler

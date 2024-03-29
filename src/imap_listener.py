@@ -210,6 +210,17 @@ def main():
         while True:
             try:
                 process_unread_emails(imap, rmq_connection, rmq_channel)
+            except imaplib.IMAP4.abort as abort_err:
+                if "socket error: TLS/SSL connection has been closed" in str(abort_err):
+                    logger.error("IMAP connection aborted. Reconnecting...")
+                    try:
+                        imap = connect_to_imap()
+                        continue
+                    except Exception as reconnect_err:
+                        logger.error("Error reconnecting to IMAP server:")
+                        raise reconnect_err
+                else:
+                    logger.error("An unexpected error occurred:", exc_info=True)
             except Exception:
                 logger.error("An unexpected error occurred:", exc_info=True)
 

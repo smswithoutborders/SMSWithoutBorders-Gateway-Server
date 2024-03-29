@@ -143,7 +143,9 @@ def main():
     dtp_handler.write_limit = FTP_WRITE_LIMIT
 
     handler.authorizer = authorizer
-    handler.banner = "SMSWITHOUTBORDERS"
+    handler.banner = "SmsWithoutBorders FTP Server"
+    handler.permit_foreign_addresses = True
+    handler.passive_ports = range(50000, 65535)
 
     handler.on_file_received = file_received
     handler.dtp_handler = dtp_handler

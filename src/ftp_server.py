@@ -145,7 +145,6 @@ def main():
     handler.authorizer = authorizer
     handler.banner = "SmsWithoutBorders FTP Server"
     handler.permit_foreign_addresses = True
-    handler.passive_ports = range(50000, 65535)
 
     handler.on_file_received = file_received
     handler.dtp_handler = dtp_handler

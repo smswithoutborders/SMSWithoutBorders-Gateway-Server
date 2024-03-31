@@ -10,7 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from SwobBackendPublisher import Lib
 
-from src.process_incoming_messages import process_data
+from src.process_incoming_messages import (
+    process_data,
+    DecryptError,
+    UserNotFoundError,
+    SharedKeyError,
+    InvalidDataError,
+)
 from src import publisher
 
 from src.users import Users
@@ -107,9 +113,14 @@ def process_single_email(imap, email_id, rmq_connection, rmq_channel):
 
         publisher.publish(channel=rmq_channel, data=processed_data)
 
+        logger.debug("Deleting email %s", email_id)
         imap.store(email_id, "+FLAGS", "\\Deleted")
 
         logger.info("Successfully queued email %s", email_id)
+
+    except (DecryptError, UserNotFoundError, SharedKeyError, InvalidDataError):
+        logger.debug("Deleting email %s", email_id)
+        imap.store(email_id, "+FLAGS", "\\Deleted")
 
     except Exception:
         logger.error("Error processing email %s:", email_id, exc_info=True)
@@ -191,19 +202,6 @@ def logout_from_imap(imap):
         logger.error("Failed to log out from IMAP server:", exc_info=True)
 
 
-def animate_sleeping(duration):
-    """Simulates a waiting animation with a "Zzz" sleeping animation.
-
-    Args:
-        duration (int): The duration of the animation in seconds.
-    """
-    start_time = time.time()
-    while time.time() - start_time < duration:
-        for frame in ["Zzz....", ".zZz...", "..zzZ..", "....Zzz"]:
-            print(f"Taking a short {duration} sec break...{frame}", end="\r")
-            time.sleep(0.5)
-
-
 def main():
     """Main function to run the IMAP listener."""
     imap = connect_to_imap()
@@ -229,7 +227,7 @@ def main():
             except Exception:
                 logger.error("An unexpected error occurred:", exc_info=True)
 
-            animate_sleeping(20)
+            time.sleep(20)
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt: Gracefully shutting down...")
 

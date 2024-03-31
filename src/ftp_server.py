@@ -2,14 +2,20 @@
 
 import os
 import logging
-import ssl
+from OpenSSL import SSL
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.servers import FTPServer
-from pyftpdlib.handlers import FTPHandler, TLS_FTPHandler, ThrottledDTPHandler
+from pyftpdlib.handlers import FTPHandler, TLS_FTPHandler, TLS_DTPHandler
 
 from SwobBackendPublisher import Lib
 
-from src.process_incoming_messages import process_data
+from src.process_incoming_messages import (
+    process_data,
+    DecryptError,
+    UserNotFoundError,
+    SharedKeyError,
+    InvalidDataError,
+)
 from src import publisher
 
 from src.users import Users
@@ -26,12 +32,9 @@ FTP_USERNAME = os.environ["FTP_USERNAME"]
 FTP_PASSWORD = os.environ["FTP_PASSWORD"]
 FTP_IP_ADDRESS = os.environ["FTP_IP_ADDRESS"]
 FTP_PORT = int(os.environ.get("FTP_PORT", 9909))
-FTP_READ_LIMIT = int(os.environ.get("FTP_READ_LIMIT", 51200))
-FTP_WRITE_LIMIT = int(os.environ.get("FTP_WRITE_LIMIT", 51200))
 FTP_MAX_CON = int(os.environ.get("FTP_MAX_CON", 256))
 FTP_MAX_CON_PER_IP = int(os.environ.get("FTP_MAX_CON_PER_IP", 5))
 FTP_PASSIVE_PORTS = [int(p) for p in os.environ["FTP_PASSIVE_PORTS"].split("-")]
-print(FTP_PASSIVE_PORTS)
 FTP_DIRECTORY = os.environ["FTP_DIRECTORY"]
 SSL_CERTIFICATE = os.environ["SSL_CERTIFICATE"]
 SSL_KEY = os.environ["SSL_KEY"]
@@ -99,6 +102,10 @@ def file_received(_, file):
 
             logger.info("File '%s' content has been queued successfully.", file)
 
+    except (DecryptError, UserNotFoundError, SharedKeyError, InvalidDataError):
+        logger.debug("Deleting file %s", file)
+        os.remove(file)
+
     except Exception:
         logger.error("Failed to process file '%s':", file, exc_info=True)
 
@@ -113,8 +120,9 @@ def create_ssl_context(certfile, keyfile):
     Returns:
         SSLContext: SSL context.
     """
-    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    context.load_cert_chain(certfile, keyfile)
+    context = SSL.Context(SSL.TLS_SERVER_METHOD)
+    context.use_certificate_file(certfile)
+    context.use_privatekey_file(keyfile)
     return context
 
 
@@ -127,6 +135,8 @@ def main():
         ssl_context = create_ssl_context(SSL_CERTIFICATE, SSL_KEY)
         handler = TLS_FTPHandler
         handler.ssl_context = ssl_context
+        handler.tls_control_required = True
+        handler.tls_data_required = True
     else:
         logger.info("No valid SSL credentials found. Running in development mode.")
         handler = FTPHandler
@@ -140,13 +150,10 @@ def main():
     server.max_cons = FTP_MAX_CON
     server.max_cons_per_ip = FTP_MAX_CON_PER_IP
 
-    dtp_handler = ThrottledDTPHandler
-    dtp_handler.read_limit = FTP_READ_LIMIT
-    dtp_handler.write_limit = FTP_WRITE_LIMIT
+    dtp_handler = TLS_DTPHandler
 
     handler.authorizer = authorizer
     handler.banner = "SmsWithoutBorders FTP Server"
-    handler.permit_foreign_addresses = True
     handler.passive_ports = range(FTP_PASSIVE_PORTS[0], FTP_PASSIVE_PORTS[1])
 
     handler.on_file_received = file_received

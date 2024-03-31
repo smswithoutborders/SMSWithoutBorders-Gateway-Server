@@ -467,17 +467,17 @@ def incoming_sms_routing(platform):
         UserNotFoundError,
         UserDoesNotExist,
         DuplicateUsersExist,
-    ) as error:
-        return str(error), 403
+    ) as err:
+        return str(err), 403
 
-    except SharedKeyError as error:
-        return str(error), 500
+    except SharedKeyError as err:
+        return str(err), 500
 
-    except InvalidDataError as error:
-        return str(error), 400
+    except InvalidDataError as err:
+        return str(err), 400
 
-    except Exception as error:
-        logging.exception(error)
+    except Exception as err:
+        logging.exception(err)
         return "Internal Server Error", 500
 
 

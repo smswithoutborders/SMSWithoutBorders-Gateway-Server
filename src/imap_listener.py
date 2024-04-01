@@ -119,8 +119,8 @@ def process_single_email(imap, email_id, rmq_connection, rmq_channel):
         logger.info("Successfully queued email %s", email_id)
 
     except (DecryptError, UserNotFoundError, SharedKeyError, InvalidDataError):
-        logger.debug("Deleting email %s", email_id)
         imap.store(email_id, "+FLAGS", "\\Deleted")
+        logger.info("Deleted email %s", email_id)
 
     except Exception:
         logger.error("Error processing email %s:", email_id, exc_info=True)

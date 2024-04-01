@@ -103,8 +103,8 @@ def file_received(_, file):
             logger.info("File '%s' content has been queued successfully.", file)
 
     except (DecryptError, UserNotFoundError, SharedKeyError, InvalidDataError):
-        logger.debug("Deleting file %s", file)
         os.remove(file)
+        logger.info("Deleted file %s", file)
 
     except Exception:
         logger.error("Failed to process file '%s':", file, exc_info=True)
@@ -155,6 +155,7 @@ def main():
     handler.authorizer = authorizer
     handler.banner = "SmsWithoutBorders FTP Server"
     handler.passive_ports = range(FTP_PASSIVE_PORTS[0], FTP_PASSIVE_PORTS[1])
+    handler.permit_privileged_ports = True
 
     handler.on_file_received = file_received
     handler.dtp_handler = dtp_handler

@@ -156,9 +156,11 @@ def main():
                 while connection_live_time < 29 * 60:
                     try:
                         responses = mailbox.idle.wait(timeout=20)
-                        logger.debug("IMAP IDLE responses: %s", responses)
+                        if responses:
+                            logger.debug("IMAP IDLE responses: %s", responses)
+
                         for msg in mailbox.fetch(
-                            criteria=AND(subject="GATEWAY", seen=False),
+                            criteria=AND(seen=False),
                             bulk=50,
                             mark_seen=False,
                         ):

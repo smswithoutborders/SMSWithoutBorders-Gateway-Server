@@ -1,15 +1,22 @@
 """Module to listen for incoming emails via IMAP, process them, and publish encrypted data."""
 
 import os
-import imaplib
+import ssl
 import logging
-import email
+
 import time
+import socket
+import imaplib
+import traceback
 
-from concurrent.futures import ThreadPoolExecutor
-
+from imap_tools import (
+    AND,
+    MailBox,
+    MailboxLoginError,
+    MailboxLogoutError,
+)
+from email_reply_parser import EmailReplyParser
 from SwobBackendPublisher import Lib
-
 from src.process_incoming_messages import (
     process_data,
     DecryptError,
@@ -18,7 +25,6 @@ from src.process_incoming_messages import (
     InvalidDataError,
 )
 from src import publisher
-
 from src.users import Users
 from src.users_entity import UsersEntity
 
@@ -27,6 +33,8 @@ IMAP_PORT = int(os.environ.get("IMAP_PORT", 993))
 IMAP_USERNAME = os.environ["IMAP_USERNAME"]
 IMAP_PASSWORD = os.environ["IMAP_PASSWORD"]
 MAIL_FOLDER = os.environ.get("MAIL_FOLDER", "INBOX")
+SSL_CERTIFICATE = os.environ["SSL_CERTIFICATE"]
+SSL_KEY = os.environ["SSL_KEY"]
 
 # Required for BE-Publisher Lib
 MYSQL_BE_HOST = os.environ.get("MYSQL_BE_HOST", os.environ["MYSQL_HOST"])
@@ -59,52 +67,53 @@ users_entity = UsersEntity(
 
 users = Users(users_entity)
 
-try:
-    users.create_database_and_tables__()
-except Exception as error:
-    logging.exception(error)
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+try:
+    users.create_database_and_tables__()
+except Exception as error:
+    logger.exception(error)
 
-def connect_to_imap():
-    """Establishes a secure connection to the IMAP server.
 
-    Returns:
-        imaplib.IMAP4_SSL: An IMAP4_SSL object representing the connection
-            to the IMAP server.
-    Raises:
-        Exception: If connection to the IMAP server fails.
+def delete_email(mailbox, email_uid):
     """
-    try:
-        logger.debug("Connecting to IMAP server...")
-        imap = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
-        imap.login(IMAP_USERNAME, IMAP_PASSWORD)
-        logger.info("Connection to IMAP server successful.")
-        return imap
-    except Exception as err:
-        logger.error("Failed to connect to IMAP server:")
-        raise err
-
-
-def process_single_email(imap, email_id, rmq_connection, rmq_channel):
-    """Processes a single email.
+    Delete an email from the mailbox.
 
     Args:
-        imap (imaplib.IMAP4_SSL): An IMAP4_SSL object representing the
+        mailbox (imaplib.IMAP4_SSL): An IMAP4_SSL object representing the
             connection to the IMAP server.
-        email_id (bytes): The unique identifier of the email to be processed.
+        email_uid (int): The UID of the email to be deleted.
+
+    Raises:
+        Exception: If there's an error while deleting the email.
+    """
+    try:
+        if email_uid:
+            mailbox.delete(email_uid)
+            logger.info("Successfully deleted email %s", email_uid)
+    except Exception as e:
+        logger.error("Error deleting email %s: %s", email_uid, e)
+        raise
+
+
+def process_incoming_email(mailbox, email, rmq_connection, rmq_channel):
+    """
+    Process an incoming email.
+
+    Args:
+        mailbox (imaplib.IMAP4_SSL): An IMAP4_SSL object representing the connection
+            to the IMAP server.
+        email (imap_tools.MailMessage): An object representing the email message.
         rmq_connection (pika.BlockingConnection): A blocking connection to RabbitMQ.
         rmq_channel (pika.BlockingChannel): A blocking channel to RabbitMQ.
     """
-    try:
-        _, data = imap.fetch(email_id, "(RFC822)")
-        raw_email = data[0][1]
-        email_message = email.message_from_bytes(raw_email)
-        content = extract_email_content(email_message)
 
-        processed_data = process_data(content["body"], bepub_lib, users)
+    body = EmailReplyParser.parse_reply(email.text)
+    email_uid = email.uid
+
+    try:
+        processed_data = process_data(body, bepub_lib, users)
 
         logger.debug("Encrypted data: %s", processed_data)
 
@@ -113,129 +122,69 @@ def process_single_email(imap, email_id, rmq_connection, rmq_channel):
 
         publisher.publish(channel=rmq_channel, data=processed_data)
 
-        logger.debug("Deleting email %s", email_id)
-        imap.store(email_id, "+FLAGS", "\\Deleted")
+        delete_email(mailbox, email_uid)
 
-        logger.info("Successfully queued email %s", email_id)
+        logger.info("Successfully queued email %s", email_uid)
 
     except (DecryptError, UserNotFoundError, SharedKeyError, InvalidDataError):
-        imap.store(email_id, "+FLAGS", "\\Deleted")
-        logger.info("Deleted email %s", email_id)
+        delete_email(mailbox, email_uid)
 
-    except Exception:
-        logger.error("Error processing email %s:", email_id, exc_info=True)
-        imap.store(email_id, "-FLAGS", "(\\Seen)")
-
-
-def process_unread_emails(imap, rmq_connection, rmq_channel):
-    """Fetches and processes unread emails.
-
-    Args:
-        imap (imaplib.IMAP4_SSL): An IMAP4_SSL object representing the
-            connection to the IMAP server.
-        rmq_connection (pika.BlockingConnection): A blocking connection to RabbitMQ.
-        rmq_channel (pika.BlockingChannel): A blocking channel to RabbitMQ.
-    """
-    try:
-        imap.select(MAIL_FOLDER)
-        _, data = imap.search(None, "(UNSEEN)")
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            for email_id in data[0].split():
-                executor.submit(
-                    process_single_email, imap, email_id, rmq_connection, rmq_channel
-                )
-
-    except Exception as err:
-        logger.error("Error fetching emails:")
-        raise err
-
-
-def extract_email_content(email_message):
-    """Extracts content from the email message.
-
-    Args:
-        email_message (email.message.Message): An email message object.
-
-    Returns:
-        dict: A dictionary containing extracted content from the email message.
-    """
-    subject = email_message["Subject"]
-    sender = email_message["From"]
-    date = email_message["Date"]
-    body = ""
-    if email_message.is_multipart():
-        for part in email_message.walk():
-            content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
-            if content_type == "text/plain" and "attachment" not in content_disposition:
-                body += part.get_payload(decode=True).decode()
-            elif (
-                content_type == "text/html" and "attachment" not in content_disposition
-            ):
-                # body += part.get_payload(decode=True).decode()
-                pass
-            else:
-                # Handle attachments or other content types if needed
-                pass
-
-    content = {"subject": subject, "sender": sender, "date": date, "body": body}
-    return content
-
-
-def logout_from_imap(imap):
-    """Logs out from the IMAP server if the connection is still valid.
-
-    Args:
-        imap (imaplib.IMAP4_SSL): An IMAP4_SSL object representing the
-            connection to the IMAP server.
-    """
-    try:
-        if imap.state != "LOGOUT":
-            if imap.state == "SELECTED":
-                imap.close()
-            imap.logout()
-            logger.info("Logged out from IMAP server.")
-        else:
-            logger.info("IMAP connection already in logout state.")
-    except Exception:
-        logger.error("Failed to log out from IMAP server:", exc_info=True)
+    except Exception as e:
+        logger.error("Error processing email %s: %s", email_uid, e)
 
 
 def main():
-    """Main function to run the IMAP listener."""
-    imap = connect_to_imap()
-    logger.info("IMAP listener started...")
+    """
+    Main function to run the email processing loop.
+    """
+    ssl_context = ssl.create_default_context()
+    ssl_context.load_cert_chain(certfile=SSL_CERTIFICATE, keyfile=SSL_KEY)
 
-    try:
-        rmq_connection, rmq_channel = publisher.init_rmq_connections()
+    rmq_connection, rmq_channel = publisher.init_rmq_connections()
 
-        while True:
-            try:
-                process_unread_emails(imap, rmq_connection, rmq_channel)
-            except imaplib.IMAP4.abort as abort_err:
-                if "socket error: TLS/SSL connection has been closed" in str(abort_err):
-                    logger.error("IMAP connection aborted. Reconnecting...")
+    done = False
+    while not done:
+        connection_start_time = time.monotonic()
+        connection_live_time = 0.0
+        try:
+            with MailBox(IMAP_SERVER, IMAP_PORT, ssl_context=ssl_context).login(
+                IMAP_USERNAME, IMAP_PASSWORD, MAIL_FOLDER
+            ) as mailbox:
+                logger.info(
+                    "Connected to mailbox %s on %s", IMAP_SERVER, time.asctime()
+                )
+                while connection_live_time < 29 * 60:
                     try:
-                        imap = connect_to_imap()
-                        continue
-                    except Exception as reconnect_err:
-                        logger.error("Error reconnecting to IMAP server:")
-                        raise reconnect_err
-                else:
-                    logger.error("An unexpected error occurred:", exc_info=True)
-            except Exception:
-                logger.error("An unexpected error occurred:", exc_info=True)
+                        responses = mailbox.idle.wait(timeout=20)
+                        logger.debug("IMAP IDLE responses: %s", responses)
+                        for msg in mailbox.fetch(
+                            criteria=AND(subject="GATEWAY", seen=False),
+                            bulk=50,
+                            mark_seen=False,
+                        ):
+                            process_incoming_email(
+                                mailbox, msg, rmq_connection, rmq_channel
+                            )
 
-            time.sleep(20)
-    except KeyboardInterrupt:
-        logger.info("KeyboardInterrupt: Gracefully shutting down...")
-
-    except Exception:
-        logger.error("An unexpected error occurred in the main loop:", exc_info=True)
-
-    finally:
-        logout_from_imap(imap)
+                    except KeyboardInterrupt:
+                        logger.info("Received KeyboardInterrupt, exiting...")
+                        done = True
+                        break
+                    connection_live_time = time.monotonic() - connection_start_time
+        except (
+            TimeoutError,
+            ConnectionError,
+            imaplib.IMAP4.abort,
+            MailboxLoginError,
+            MailboxLogoutError,
+            socket.herror,
+            socket.gaierror,
+            socket.timeout,
+        ) as e:
+            logger.error("Error occurred: %s", e)
+            logger.error(traceback.format_exc())
+            logger.info("Reconnecting in a minute...")
+            time.sleep(60)
 
 
 if __name__ == "__main__":

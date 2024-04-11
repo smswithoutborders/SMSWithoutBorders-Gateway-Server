@@ -30,6 +30,8 @@ import bleach
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
 
+from src.routes.api_v3 import v3_blueprint
+
 __api_version_number = 2
 
 HOST = os.environ.get("HOST")
@@ -109,6 +111,7 @@ except Exception as error:
 # Flask creations
 app = Flask(__name__)
 app.config.from_object(__name__)
+app.register_blueprint(v3_blueprint)
 
 # CORS(
 #    app,

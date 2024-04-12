@@ -1,4 +1,4 @@
-"""GatewayClients model."""
+"""Gateway Clients Model."""
 
 from datetime import datetime
 from peewee import Model, CharField, DateTimeField, BooleanField
@@ -13,12 +13,12 @@ TABLE_NAME = "gateway_clients"
 class GatewayClients(Model):
     """Model representing Gateway Clients."""
 
-    msisdn = CharField()
+    msisdn = CharField(primary_key=True)
     country = CharField()
     operator = CharField()
     protocol = CharField()
     published = BooleanField()
-    published_date = DateTimeField(default=datetime.now)
+    last_published_date = DateTimeField(default=datetime.now)
 
     # pylint: disable=R0903
     class Meta:

@@ -20,7 +20,7 @@ google-auth-oauthlib==0.4.6
 googleapis-common-protos==1.63.0
 greenlet==2.0.0.post0
 httplib2==0.22.0
-idna==3.6
+idna==3.7
 imap-tools==1.6.0
 importlib_metadata==7.0.2
 itsdangerous==2.1.2

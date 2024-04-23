@@ -1,7 +1,7 @@
 """Gateway Clients Model."""
 
 from datetime import datetime
-from peewee import Model, CharField, DateTimeField, BooleanField
+from peewee import Model, CharField, DateTimeField
 
 from src.models.db_connector import connect
 from src.utils import create_table
@@ -16,8 +16,7 @@ class GatewayClients(Model):
     msisdn = CharField(primary_key=True)
     country = CharField()
     operator = CharField()
-    protocol = CharField()
-    published = BooleanField()
+    protocols = CharField()
     last_published_date = DateTimeField(default=datetime.now)
 
     # pylint: disable=R0903

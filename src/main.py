@@ -9,6 +9,7 @@ from flask_cors import CORS, cross_origin
 from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from src.process_incoming_messages import (
     process_data,
+    process_test,
     DecryptError,
     UserNotFoundError,
     SharedKeyError,
@@ -453,6 +454,9 @@ def incoming_sms_routing(platform):
     data = request.data
 
     try:
+        if process_test(data):
+            return "published!", 200
+
         processed_data = process_data(data, BEPubLib, users)
 
         app.logger.debug("Encrypted data: %s", processed_data)
@@ -474,7 +478,7 @@ def incoming_sms_routing(platform):
         return str(err), 403
 
     except SharedKeyError as err:
-        return str(err), 500
+        return str(err), 401
 
     except InvalidDataError as err:
         return str(err), 400

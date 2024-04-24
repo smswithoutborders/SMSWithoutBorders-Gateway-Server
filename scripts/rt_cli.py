@@ -44,13 +44,12 @@ def make_deku_api_call(msisdn, payload):
         logger.error("Deku Cloud environment variables are not set.")
         return False
 
-    data = {"to": msisdn, "body": payload}
-    headers = {"Content-Type": "application/json"}
+    data = {"sid": "", "to": msisdn, "body": payload}
     auth = (DEKU_CLOUD_ACCOUNT_SID, DEKU_CLOUD_AUTH_TOKEN)
     url = f"{DEKU_CLOUD_URL}/v1/projects/{DEKU_CLOUD_PROJECT_REF}/services/{DEKU_CLOUD_SERVICE_ID}"
 
     try:
-        response = requests.post(url, json=data, headers=headers, auth=auth, timeout=10)
+        response = requests.post(url, json=data, auth=auth, timeout=10)
         response.raise_for_status()
         return True
     except requests.exceptions.RequestException:
@@ -62,7 +61,7 @@ def encrypt_payload(payload):
     """Encrypts test payload using AES encryption.
 
     Args:
-        payload (dict): Test Payload to be encrypted.
+        payload (bytes): Test Payload to be encrypted.
 
     Returns:
         str: The base64 encoded ciphertext.
@@ -79,10 +78,8 @@ def encrypt_payload(payload):
         return None
 
     try:
-        ciphertext = aes.AESCipher.encrypt(
-            shared_key=encryption_key, data=bytes(json.dumps(payload), "utf-8")
-        )
-        return base64.b64encode(ciphertext)
+        ciphertext = aes.AESCipher.encrypt(shared_key=encryption_key, data=payload)
+        return base64.b64encode(ciphertext).decode("utf-8")
     # pylint: disable=W0718
     except Exception:
         logger.error("Failed to encrypt payload.", exc_info=True)
@@ -99,7 +96,7 @@ def create_test_payload(test_data):
         str: The base64 encoded ciphertext of the encrypted payload.
     """
     test_payload = {"test_id": test_data["id"], "msisdn": test_data["msisdn"]}
-    test_ciphertext = encrypt_payload(payload=test_payload)
+    test_ciphertext = encrypt_payload(payload=bytes(json.dumps(test_payload), "utf-8"))
     return test_ciphertext
 
 
@@ -132,27 +129,27 @@ def start_tests(msisdn=None, all_tests=False):
                 # pylint: disable=W0212,E1101
                 with ReliabilityTests._meta.database.atomic() as transaction:
                     test = ReliabilityTests.create(msisdn=client.msisdn)
-                    test_payload = create_test_payload(
-                        model_to_dict(test, recurse=False)
-                    )
+                    test_dict = model_to_dict(test, recurse=False)
+                    test_payload = create_test_payload(test_dict)
 
                     if not test_payload:
                         logger.error(
-                            "Failed to create test payload for MSISDN: %s", test.msisdn
+                            "Failed to create test payload for MSISDN: %s",
+                            test_dict["msisdn"],
                         )
                         transaction.rollback()
                         continue
 
-                    if not make_deku_api_call(test.msisdn, test_payload):
+                    if not make_deku_api_call(test_dict["msisdn"], test_payload):
                         logger.error(
-                            "Failed to start tests for MSISDN: %s", test.msisdn
+                            "Failed to start tests for MSISDN: %s", test_dict["msisdn"]
                         )
                         transaction.rollback()
                         continue
 
                     test.status = "running"
                     test.save()
-                    logger.info("Started tests for MSISDN: %s", test.msisdn)
+                    logger.info("Started tests for MSISDN: %s", test_dict["msisdn"])
 
             else:
                 logger.info("Tests for MSISDN %s are already running.", client.msisdn)

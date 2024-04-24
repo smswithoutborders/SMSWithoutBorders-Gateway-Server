@@ -4,10 +4,16 @@ import logging
 import base64
 import json
 import os
+from datetime import datetime
+
+from playhouse.shortcuts import model_to_dict
 
 from src import aes
+from src.models.reliability_tests import ReliabilityTests
 
 logger = logging.getLogger(__name__)
+
+SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
 
 
 class UserNotFoundError(Exception):
@@ -148,6 +154,74 @@ def process_data(data, be_pub_lib, users):
         data = base64.b64encode(data)
 
         return str(data, "utf-8")
+
+    except Exception as error:
+        raise error
+
+
+def process_test(data):
+    """
+    Process incoming test data.
+
+    Args:
+        data (str): Incoming data in JSON format.
+
+    Returns:
+        bool: True successful, False if no test record found
+
+    Raises:
+        Exception: If any error occurs during processing.
+    """
+    try:
+        data = parse_json_data(data)
+        validate_data(data)
+
+        user_msisdn = data.get("MSISDN") or data.get("address")
+
+        test = ReliabilityTests.get_or_none(
+            ReliabilityTests.sms_routed_time.is_null(),
+            msisdn=user_msisdn,
+            status="running",
+        )
+
+        if not test:
+            logger.error("No running test record found for MSISDN %s.", user_msisdn)
+            return False
+
+        if not SHARED_KEY_FILE:
+            logger.error("SHARED_KEY_FILE environment variable not set.")
+            return False
+
+        with open(SHARED_KEY_FILE, "r", encoding="utf-8") as f:
+            encryption_key = f.readline().strip()[:32]
+
+        if not encryption_key:
+            logger.error("Encryption key is empty or invalid.")
+            return False
+
+        plaintext = decrypt_text(data["text"], encryption_key)
+
+        test_dict = model_to_dict(test, False)
+        incoming_test_dict = parse_json_data(plaintext)
+
+        if test_dict["id"] != incoming_test_dict["test_id"]:
+            logger.error("Mismatch in test ID.")
+            raise DecryptError("Invalid test data")
+
+        if test_dict["msisdn"] != incoming_test_dict["msisdn"]:
+            logger.error("Mismatch in test MSISDN.")
+            raise DecryptError("Invalid test data")
+
+        date_sent = int(data["date_sent"]) / 1000
+        date = int(data["date"]) / 1000
+
+        test.status = "success"
+        test.sms_routed_time = datetime.now()
+        test.sms_sent_time = datetime.fromtimestamp(date_sent)
+        test.sms_received_time = datetime.fromtimestamp(date)
+        test.save()
+
+        return True
 
     except Exception as error:
         raise error

@@ -9,6 +9,7 @@ from flask_cors import CORS, cross_origin
 from src import sync, rsa, aes, publisher, rmq_broker, notifications
 from src.process_incoming_messages import (
     process_data,
+    process_test,
     DecryptError,
     UserNotFoundError,
     SharedKeyError,
@@ -29,6 +30,8 @@ import bleach
 
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
+
+from src.routes.api_v3 import v3_blueprint
 
 __api_version_number = 2
 
@@ -109,6 +112,7 @@ except Exception as error:
 # Flask creations
 app = Flask(__name__)
 app.config.from_object(__name__)
+app.register_blueprint(v3_blueprint)
 
 # CORS(
 #    app,
@@ -450,6 +454,9 @@ def incoming_sms_routing(platform):
     data = request.data
 
     try:
+        if process_test(data):
+            return "published!", 200
+
         processed_data = process_data(data, BEPubLib, users)
 
         app.logger.debug("Encrypted data: %s", processed_data)
@@ -471,7 +478,7 @@ def incoming_sms_routing(platform):
         return str(err), 403
 
     except SharedKeyError as err:
-        return str(err), 500
+        return str(err), 401
 
     except InvalidDataError as err:
         return str(err), 400

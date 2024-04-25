@@ -3,14 +3,17 @@
 import logging
 
 from flask import Blueprint, request, jsonify
+from flask_cors import CORS
 from playhouse.shortcuts import model_to_dict
 from peewee import fn
 from werkzeug.exceptions import BadRequest
 
 from src.models.db_connector import connect
 from src.models.gateway_clients import GatewayClients
+from src.models.reliability_tests import ReliabilityTests
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
+CORS(v3_blueprint)
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,7 @@ def after_request(response):
     return response
 
 
-@v3_blueprint.route("/gateway-clients", methods=["GET"])
+@v3_blueprint.route("/clients", methods=["GET"])
 def get_gateway_clients():
     """Get gateway clients with optional filters"""
 
@@ -68,20 +71,7 @@ def get_gateway_clients():
         "country": request.args.get("country") or None,
         "operator": request.args.get("operator") or None,
         "protocol": request.args.get("protocol") or None,
-        "published": request.args.get("published"),
     }
-
-    published_value = filters["published"]
-    if published_value is not None and published_value != "":
-        published = published_value.lower()
-        if published in ("true", "1", "yes"):
-            filters["published"] = True
-        elif published in ("false", "0", "no"):
-            filters["published"] = False
-        else:
-            raise BadRequest("Published must be boolean (True or False, 1 or 0)")
-    else:
-        filters["published"] = None
 
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
@@ -97,7 +87,17 @@ def get_gateway_clients():
             else:
                 query = query.where(getattr(GatewayClients, key) == value)
 
-    results = [model_to_dict(client) for client in query]
+    results = []
+
+    for client in query:
+        client_data = model_to_dict(client)
+        tests = ReliabilityTests.select().where(
+            ReliabilityTests.msisdn == client.msisdn
+        )
+        #  pylint: disable=E1133
+        test_data = [model_to_dict(test, False) for test in tests]
+        client_data["test_data"] = test_data
+        results.append(client_data)
 
     return jsonify(results)
 

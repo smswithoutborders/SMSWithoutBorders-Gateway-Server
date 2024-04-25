@@ -6,6 +6,7 @@ import logging
 from peewee import OperationalError
 from src.models.reliability_tests import ReliabilityTests
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -33,7 +34,7 @@ def check_reliability_tests(check_duration):
                 logger.debug(
                     "Test ID %d has timed out. Updating status to 'timeout'", test.id
                 )
-                test.status = "timeout"
+                test.status = "timedout"
                 test.save()
                 logger.info("Status updated for Test ID %d", test.id)
     except OperationalError:

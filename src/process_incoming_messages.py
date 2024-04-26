@@ -6,8 +6,6 @@ import json
 import os
 from datetime import datetime
 
-from playhouse.shortcuts import model_to_dict
-
 from src import aes
 from src.models.reliability_tests import ReliabilityTests
 
@@ -167,7 +165,7 @@ def process_test(data):
         data (str): Incoming data in JSON format.
 
     Returns:
-        bool: True successful, False if no test record found
+        bool: True if successful, False otherwise.
 
     Raises:
         Exception: If any error occurs during processing.
@@ -175,18 +173,6 @@ def process_test(data):
     try:
         data = parse_json_data(data)
         validate_data(data)
-
-        user_msisdn = data.get("MSISDN") or data.get("address")
-
-        test = ReliabilityTests.get_or_none(
-            ReliabilityTests.sms_routed_time.is_null(),
-            msisdn=user_msisdn,
-            status="running",
-        )
-
-        if not test:
-            logger.error("No running test record found for MSISDN %s.", user_msisdn)
-            return False
 
         if not SHARED_KEY_FILE:
             logger.error("SHARED_KEY_FILE environment variable not set.")
@@ -200,17 +186,25 @@ def process_test(data):
             return False
 
         plaintext = decrypt_text(data["text"], encryption_key)
+        decrypted_test_data = parse_json_data(plaintext)
 
-        test_dict = model_to_dict(test, False)
-        incoming_test_dict = parse_json_data(plaintext)
+        test_id = decrypted_test_data.get("id")
+        test_msisdn = decrypted_test_data.get("msisdn")
 
-        if test_dict["id"] != incoming_test_dict["test_id"]:
-            logger.error("Mismatch in test ID.")
-            raise DecryptError("Invalid test data")
+        if not test_id or not test_msisdn:
+            logger.error("Test data is incomplete.")
+            return False
 
-        if test_dict["msisdn"] != incoming_test_dict["msisdn"]:
-            logger.error("Mismatch in test MSISDN.")
-            raise DecryptError("Invalid test data")
+        test = ReliabilityTests.get_or_none(
+            ReliabilityTests.sms_routed_time.is_null(),
+            id=test_id,
+            msisdn=test_msisdn,
+            status="running",
+        )
+
+        if not test:
+            logger.error("No running test record found for MSISDN %s.", test_msisdn)
+            return False
 
         date_sent = int(data["date_sent"]) / 1000
         date = int(data["date"]) / 1000
@@ -223,5 +217,9 @@ def process_test(data):
 
         return True
 
+    except DecryptError:
+        logger.info("Failed to decrypt data. Skipping test check.")
+        return False
     except Exception as error:
+        logger.error("An error occurred during test data processing: %s", error)
         raise error

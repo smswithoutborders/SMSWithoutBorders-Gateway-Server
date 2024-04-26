@@ -188,7 +188,7 @@ def process_test(data):
         plaintext = decrypt_text(data["text"], encryption_key)
         decrypted_test_data = parse_json_data(plaintext)
 
-        test_id = decrypted_test_data.get("id")
+        test_id = decrypted_test_data.get("test_id")
         test_msisdn = decrypted_test_data.get("msisdn")
 
         if not test_id or not test_msisdn:
@@ -218,7 +218,7 @@ def process_test(data):
         return True
 
     except DecryptError:
-        logger.info("Failed to decrypt data. Skipping test check.")
+        logger.info("Skipping test check ...")
         return False
     except Exception as error:
         logger.error("An error occurred during test data processing: %s", error)

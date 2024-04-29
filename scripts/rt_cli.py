@@ -2,6 +2,7 @@
 
 import os
 import logging
+import datetime
 import json
 import base64
 import argparse
@@ -10,6 +11,7 @@ from playhouse.shortcuts import model_to_dict
 
 from src.models.gateway_clients import GatewayClients
 from src.models.reliability_tests import ReliabilityTests
+from src.reliability_test_checker import check_reliability_tests
 from src import aes
 
 DEKU_CLOUD_URL = os.environ.get("DEKU_CLOUD_URL")
@@ -207,6 +209,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    check_duration = datetime.timedelta(minutes=15)
+    check_reliability_tests(check_duration)
 
     if args.action == "start":
         start_tests(args.msisdn, args.all)

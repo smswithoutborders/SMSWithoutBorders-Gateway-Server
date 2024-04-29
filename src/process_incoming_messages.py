@@ -4,10 +4,11 @@ import logging
 import base64
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from src import aes
 from src.models.reliability_tests import ReliabilityTests
+from src.reliability_test_checker import check_reliability_tests
 
 logger = logging.getLogger(__name__)
 
@@ -195,25 +196,30 @@ def process_test(data):
             logger.error("Test data is incomplete.")
             return False
 
-        test = ReliabilityTests.get_or_none(
-            ReliabilityTests.sms_routed_time.is_null(),
-            id=test_id,
-            msisdn=test_msisdn,
-            status="running",
-        )
+        check_duration = timedelta(minutes=15)
+        check_reliability_tests(check_duration)
 
-        if not test:
-            logger.error("No running test record found for MSISDN %s.", test_msisdn)
-            return False
+        # pylint: disable=E1101,W0212
+        with ReliabilityTests._meta.database.connection_context():
+            test = ReliabilityTests.get_or_none(
+                ReliabilityTests.sms_routed_time.is_null(),
+                id=test_id,
+                msisdn=test_msisdn,
+                status="running",
+            )
 
-        date_sent = int(data["date_sent"]) / 1000
-        date = int(data["date"]) / 1000
+            if not test:
+                logger.error("No running test record found for MSISDN %s.", test_msisdn)
+                return False
 
-        test.status = "success"
-        test.sms_routed_time = datetime.now()
-        test.sms_sent_time = datetime.fromtimestamp(date_sent)
-        test.sms_received_time = datetime.fromtimestamp(date)
-        test.save()
+            date_sent = int(data["date_sent"]) / 1000
+            date = int(data["date"]) / 1000
+
+            test.status = "success"
+            test.sms_routed_time = datetime.now()
+            test.sms_sent_time = datetime.fromtimestamp(date_sent)
+            test.sms_received_time = datetime.fromtimestamp(date)
+            test.save()
 
         return True
 

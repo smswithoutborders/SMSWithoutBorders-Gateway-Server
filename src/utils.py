@@ -57,5 +57,6 @@ def create_table(model, table_name, db):
         table_name (str): The name of the table to create.
         db: The database instance to create the table in.
     """
-    if not db.table_exists(table_name):
-        db.create_tables([model])
+    with db.connection_context():
+        if not db.table_exists(table_name):
+            db.create_tables([model])

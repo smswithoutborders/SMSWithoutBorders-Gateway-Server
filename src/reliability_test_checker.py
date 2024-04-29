@@ -24,19 +24,21 @@ def check_reliability_tests(check_duration):
     current_time = datetime.datetime.now()
     logger.info("Starting reliability tests check at %s", current_time)
     try:
-        tests = ReliabilityTests.select().where(
-            ~(ReliabilityTests.status.in_(["success", "timedout"]))
-        )
+        # pylint: disable=E1133,E1101,W0212
+        with ReliabilityTests._meta.database.atomic():
+            tests = ReliabilityTests.select().where(
+                ~(ReliabilityTests.status.in_(["success", "timedout"]))
+            )
 
-        #  pylint: disable=E1133
-        for test in tests:
-            if current_time - test.start_time >= check_duration:
-                logger.debug(
-                    "Test ID %d has timed out. Updating status to 'timeout'", test.id
-                )
-                test.status = "timedout"
-                test.save()
-                logger.info("Status updated for Test ID %d", test.id)
+            for test in tests:
+                if current_time - test.start_time >= check_duration:
+                    logger.debug(
+                        "Test ID %d has timed out. Updating status to 'timeout'",
+                        test.id,
+                    )
+                    test.status = "timedout"
+                    test.save()
+                    logger.info("Status updated for Test ID %d", test.id)
     except OperationalError:
         logger.error("Database error occurred", exc_info=True)
 

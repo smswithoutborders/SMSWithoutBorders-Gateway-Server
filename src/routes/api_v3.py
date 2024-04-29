@@ -46,19 +46,9 @@ def set_security_headers(response):
     return response
 
 
-@v3_blueprint.before_request
-def before_request():
-    """Connect to the database before each request."""
-    if not database.is_closed():
-        database.close()
-    database.connect()
-
-
 @v3_blueprint.after_request
 def after_request(response):
-    """Close the database connection and set security headers after each request."""
-    if not database.is_closed():
-        database.close()
+    """Set security headers after each request."""
     response = set_security_headers(response)
     return response
 
@@ -76,28 +66,29 @@ def get_gateway_clients():
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
 
-    query = GatewayClients.select().paginate(page, per_page)
+    with database.connection_context():
+        query = GatewayClients.select().paginate(page, per_page)
 
-    for key, value in filters.items():
-        if value is not None:
-            if key in ("country", "operator", "protocol"):
-                query = query.where(
-                    fn.lower(getattr(GatewayClients, key)) == value.lower()
-                )
-            else:
-                query = query.where(getattr(GatewayClients, key) == value)
+        for key, value in filters.items():
+            if value is not None:
+                if key in ("country", "operator", "protocol"):
+                    query = query.where(
+                        fn.lower(getattr(GatewayClients, key)) == value.lower()
+                    )
+                else:
+                    query = query.where(getattr(GatewayClients, key) == value)
 
-    results = []
+        results = []
 
-    for client in query:
-        client_data = model_to_dict(client)
-        tests = ReliabilityTests.select().where(
-            ReliabilityTests.msisdn == client.msisdn
-        )
-        #  pylint: disable=E1133
-        test_data = [model_to_dict(test, False) for test in tests]
-        client_data["test_data"] = test_data
-        results.append(client_data)
+        for client in query:
+            client_data = model_to_dict(client)
+            tests = ReliabilityTests.select().where(
+                ReliabilityTests.msisdn == client.msisdn
+            )
+            #  pylint: disable=E1133
+            test_data = [model_to_dict(test, False) for test in tests]
+            client_data["test_data"] = test_data
+            results.append(client_data)
 
     return jsonify(results)
 

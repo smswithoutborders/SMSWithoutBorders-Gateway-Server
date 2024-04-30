@@ -4,11 +4,11 @@ import logging
 import base64
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from src import aes
-from src.models.reliability_tests import ReliabilityTests
-from src.reliability_test_checker import check_reliability_tests
+from src.models import ReliabilityTests
+from src.controllers import check_reliability_tests
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +196,7 @@ def process_test(data):
             logger.error("Test data is incomplete.")
             return False
 
-        check_duration = timedelta(minutes=15)
-        check_reliability_tests(check_duration)
+        check_reliability_tests()
 
         # pylint: disable=E1101,W0212
         with ReliabilityTests._meta.database.connection_context():

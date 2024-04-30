@@ -1,14 +1,29 @@
-"""Gateway Clients Reliability Tests Model."""
+"""Database Models."""
 
 from datetime import datetime
 from peewee import Model, CharField, DateTimeField, ForeignKeyField
 
-from src.models.db_connector import connect
-from src.models.gateway_clients import GatewayClients
-from src.utils import create_table
+from src.db import connect
+from src.utils import create_tables
 
 database = connect()
-TABLE_NAME = "reliability_tests"
+
+
+class GatewayClients(Model):
+    """Model representing Gateway Clients."""
+
+    msisdn = CharField(primary_key=True)
+    country = CharField()
+    operator = CharField()
+    protocols = CharField()
+    last_published_date = DateTimeField(default=datetime.now)
+
+    # pylint: disable=R0903
+    class Meta:
+        """Meta class to define database connection."""
+
+        database = database
+        table_name = "gateway_clients"
 
 
 class ReliabilityTests(Model):
@@ -26,7 +41,7 @@ class ReliabilityTests(Model):
         """Meta class to define database connection."""
 
         database = database
-        table_name = TABLE_NAME
+        table_name = "reliability_tests"
 
 
-create_table(ReliabilityTests, TABLE_NAME, database)
+create_tables([GatewayClients, ReliabilityTests], database)

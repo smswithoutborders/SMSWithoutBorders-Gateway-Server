@@ -15,6 +15,8 @@ from src.process_incoming_messages import (
     SharedKeyError,
     InvalidDataError,
 )
+from src.api_v3 import v3_blueprint
+
 from sockets import ip_grap
 
 from src.users import Users
@@ -31,7 +33,6 @@ import bleach
 from SwobBackendPublisher import MySQL, Lib
 from SwobBackendPublisher.exceptions import UserDoesNotExist, DuplicateUsersExist
 
-from src.routes.api_v3 import v3_blueprint
 
 __api_version_number = 2
 

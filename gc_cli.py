@@ -5,7 +5,7 @@ import logging
 import phonenumbers
 from phonenumbers import carrier, geocoder
 from playhouse.shortcuts import model_to_dict
-from src.models.gateway_clients import GatewayClients
+from src.models import GatewayClients
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -83,24 +83,21 @@ def view_client(msisdn=None):
         None
     """
     try:
+        query = GatewayClients.select().dicts()
+
         if msisdn:
-            client = GatewayClients.get_or_none(msisdn=msisdn)
-            if client:
-                print(f"{'Client Details':=^60}")
-                for key, value in model_to_dict(client).items():
-                    print(f"{key.upper()}: {value}")
-            else:
-                logger.info("No client found with MSISDN: %s", msisdn)
-        else:
-            clients = GatewayClients.select().dicts()
-            if clients:
-                print(f"{'All Clients':=^60}")
-                for client in clients:
-                    print("-" * 60)
-                    for key, value in client.items():
-                        print(f"{key.upper()}: {value}")
-            else:
-                logger.info("No clients found.")
+            query = query.where(GatewayClients.msisdn == msisdn).dicts()
+
+        if not query:
+            logger.info("No clients found.")
+            return
+
+        print(f"{'Clients':=^60}")
+        for test in query:
+            print("-" * 60)
+            for key, value in test.items():
+                print(f"{key.upper()}: {value}")
+
     # pylint: disable=W0718
     except Exception:
         logger.error("Failed to get client(s).", exc_info=True)

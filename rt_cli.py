@@ -9,9 +9,9 @@ import argparse
 import requests
 from playhouse.shortcuts import model_to_dict
 
-from src.models.gateway_clients import GatewayClients
-from src.models.reliability_tests import ReliabilityTests
-from src.reliability_test_checker import check_reliability_tests
+from src.models import GatewayClients
+from src.models import ReliabilityTests
+from src.controllers import check_reliability_tests
 from src import aes
 
 DEKU_CLOUD_URL = os.environ.get("DEKU_CLOUD_URL")
@@ -126,35 +126,40 @@ def start_tests(msisdn=None, all_tests=False):
                 logger.info("No client found with MSISDN: %s", msisdn)
                 continue
 
-            existing_test = ReliabilityTests.get_or_none(msisdn=client.msisdn)
-            if not existing_test or existing_test.status != "running":
-                # pylint: disable=W0212,E1101
-                with ReliabilityTests._meta.database.atomic() as transaction:
-                    test = ReliabilityTests.create(msisdn=client.msisdn)
-                    test_dict = model_to_dict(test, recurse=False)
-                    test_payload = create_test_payload(test_dict)
+            existing_tests = ReliabilityTests.select().where(
+                ReliabilityTests.msisdn == client.msisdn,
+                ReliabilityTests.status == "running",
+            )
 
-                    if not test_payload:
-                        logger.error(
-                            "Failed to create test payload for MSISDN: %s",
-                            test_dict["msisdn"],
-                        )
-                        transaction.rollback()
-                        continue
-
-                    if not make_deku_api_call(test_dict["msisdn"], test_payload):
-                        logger.error(
-                            "Failed to start tests for MSISDN: %s", test_dict["msisdn"]
-                        )
-                        transaction.rollback()
-                        continue
-
-                    test.status = "running"
-                    test.save()
-                    logger.info("Started tests for MSISDN: %s", test_dict["msisdn"])
-
-            else:
+            if existing_tests:
                 logger.info("Tests for MSISDN %s are already running.", client.msisdn)
+                continue
+
+            # pylint: disable=E1101,W0212
+            with ReliabilityTests._meta.database.atomic() as transaction:
+                test = ReliabilityTests.create(msisdn=client.msisdn)
+                test_dict = model_to_dict(test, recurse=False)
+                test_payload = create_test_payload(test_dict)
+
+                if not test_payload:
+                    logger.error(
+                        "Failed to create test payload for MSISDN: %s",
+                        test_dict["msisdn"],
+                    )
+                    transaction.rollback()
+                    continue
+
+                if not make_deku_api_call(test_dict["msisdn"], test_payload):
+                    logger.error(
+                        "Failed to start tests for MSISDN: %s", test_dict["msisdn"]
+                    )
+                    transaction.rollback()
+                    continue
+
+                test.status = "running"
+                test.save()
+                logger.info("Started tests for MSISDN: %s", test_dict["msisdn"])
+
     # pylint: disable=W0718
     except Exception:
         logger.error("An unexpected error occurred:", exc_info=True)
@@ -167,24 +172,21 @@ def view_test_data(msisdn=None):
         msisdn (str, optional): MSISDN for which test data is to be viewed.
     """
     try:
+        query = ReliabilityTests.select().dicts()
+
         if msisdn:
-            test = ReliabilityTests.get_or_none(msisdn=msisdn)
-            if test:
-                print(f"{'Test Details':=^60}")
-                for key, value in model_to_dict(test, recurse=False).items():
-                    print(f"{key.upper()}: {value}")
-            else:
-                logger.error("No test data found for MSISDN: %s", msisdn)
-        else:
-            tests = ReliabilityTests.select().dicts()
-            if tests:
-                print(f"{'All Tests':=^60}")
-                for test in tests:
-                    print("-" * 60)
-                    for key, value in test.items():
-                        print(f"{key.upper()}: {value}")
-            else:
-                logger.info("No tests found.")
+            query = query.where(ReliabilityTests.msisdn == msisdn).dicts()
+
+        if not query:
+            logger.info("No tests found.")
+            return
+
+        print(f"{'Tests':=^60}")
+        for test in query:
+            print("-" * 60)
+            for key, value in test.items():
+                print(f"{key.upper()}: {value}")
+
     # pylint: disable=W0718
     except Exception:
         logger.error("Failed to get test(s).", exc_info=True)

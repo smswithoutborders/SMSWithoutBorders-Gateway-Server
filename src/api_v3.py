@@ -4,20 +4,17 @@ import logging
 
 from flask import Blueprint, request, jsonify
 from flask_cors import CORS
-from playhouse.shortcuts import model_to_dict
-from peewee import fn
 from werkzeug.exceptions import BadRequest
 
-from src.models.db_connector import connect
-from src.models.gateway_clients import GatewayClients
-from src.models.reliability_tests import ReliabilityTests
+from src.controllers import query_gateway_clients, check_reliability_tests
+from src.db import connect
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
 CORS(v3_blueprint)
 
-logger = logging.getLogger(__name__)
-
 database = connect()
+
+logger = logging.getLogger(__name__)
 
 
 def set_security_headers(response):
@@ -46,6 +43,20 @@ def set_security_headers(response):
     return response
 
 
+@v3_blueprint.before_request
+def _db_connect():
+    """Connect to the database before processing the request."""
+    database.connect()
+
+
+@v3_blueprint.teardown_request
+def _db_close(response):
+    """Close the database connection after processing the request."""
+    if not database.is_closed():
+        database.close()
+    return response
+
+
 @v3_blueprint.after_request
 def after_request(response):
     """Set security headers after each request."""
@@ -66,29 +77,8 @@ def get_gateway_clients():
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
 
-    with database.connection_context():
-        query = GatewayClients.select().paginate(page, per_page)
-
-        for key, value in filters.items():
-            if value is not None:
-                if key in ("country", "operator", "protocol"):
-                    query = query.where(
-                        fn.lower(getattr(GatewayClients, key)) == value.lower()
-                    )
-                else:
-                    query = query.where(getattr(GatewayClients, key) == value)
-
-        results = []
-
-        for client in query:
-            client_data = model_to_dict(client)
-            tests = ReliabilityTests.select().where(
-                ReliabilityTests.msisdn == client.msisdn
-            )
-            #  pylint: disable=E1133
-            test_data = [model_to_dict(test, False) for test in tests]
-            client_data["test_data"] = test_data
-            results.append(client_data)
+    check_reliability_tests()
+    results = query_gateway_clients(filters, page, per_page)
 
     return jsonify(results)
 

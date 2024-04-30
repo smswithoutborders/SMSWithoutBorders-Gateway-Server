@@ -29,14 +29,14 @@ def ensure_database_exists(host, user, password, database_name):
                 with mysql.connector.connect(
                     host=host, user=user, password=password
                 ) as connection:
-                    cursor = connection.cursor()
+                    with connection.cursor() as cursor:
+                        sql = "CREATE DATABASE IF NOT EXISTS " + database_name
+                        cursor.execute(sql)
 
-                    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name}")
-
-                    logger.info(
-                        "Database %s created successfully (if it didn't exist)",
-                        database_name,
-                    )
+                logger.info(
+                    "Database %s created successfully (if it didn't exist)",
+                    database_name,
+                )
 
             except mysql.connector.Error as error:
                 logger.error("Failed to create database: %s", error)
@@ -48,15 +48,20 @@ def ensure_database_exists(host, user, password, database_name):
     return decorator
 
 
-def create_table(model, table_name, db):
+def create_tables(models, db):
     """
-    Creates a table for the given model if it doesn't exist in the specified database.
+    Creates tables for the given models if they don't exist in the specified database.
 
     Args:
-        model: The Peewee Model instance for which to create the table.
-        table_name (str): The name of the table to create.
-        db: The database instance to create the table in.
+        models: A list of Peewee Model instances.
+        db: The database instance to create the tables in.
     """
     with db.connection_context():
-        if not db.table_exists(table_name):
-            db.create_tables([model])
+        models_to_create = [
+            # pylint: disable=W0212
+            model
+            for model in models
+            if not db.table_exists(model._meta.table_name)
+        ]
+        if models_to_create:
+            db.create_tables(models_to_create)

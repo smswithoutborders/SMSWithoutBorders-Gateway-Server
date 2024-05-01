@@ -221,9 +221,58 @@ python -m unittest test/security_rsa.py
 
 ## Scripts
 
+### FTP Server
+
+```bash
+MYSQL_HOST= \
+MYSQL_USER= \
+MYSQL_PASSWORD= \
+MYSQL_DATABASE= \
+FTP_USERNAME= \
+FTP_PASSWORD= \
+FTP_IP_ADDRESS= \
+FTP_PORT= \
+FTP_PASSIVE_PORTS= \
+FTP_READ_LIMIT= \
+FTP_WRITE_LIMIT= \
+FTP_MAX_CON= \
+FTP_MAX_CON_PER_IP= \
+FTP_DIRECTORY= \
+SSL_CERTIFICATE= \
+SSL_KEY= \
+python3 -m src.ftp_server
+```
+
+### IMAP Listener
+
+```bash
+MYSQL_HOST= \
+MYSQL_USER= \
+MYSQL_PASSWORD= \
+MYSQL_DATABASE= \
+IMAP_SERVER= \
+IMAP_PORT= \
+IMAP_USERNAME= \
+IMAP_PASSWORD= \
+MAIL_FOLDER= \
+SSL_CERTIFICATE= \
+SSL_KEY= \
+python3 -m src.imap_listener
+```
+
 ### Reliability Test CLI
 
 ```bash
+MYSQL_HOST= \
+MYSQL_USER= \
+MYSQL_PASSWORD= \
+MYSQL_DATABASE= \
+SHARED_KEY= \
+DEKU_CLOUD_URL= \
+DEKU_CLOUD_PROJECT_REF= \
+DEKU_CLOUD_SERVICE_ID= \
+DEKU_CLOUD_ACCOUNT_SID= \
+DEKU_CLOUD_AUTH_TOKEN= \
 python3 -m rt_cli
 ```
 
@@ -233,8 +282,22 @@ python3 -m rt_cli
 ### GateWay Clients CLI
 
 ```bash
+MYSQL_HOST= \
+MYSQL_USER= \
+MYSQL_PASSWORD= \
+MYSQL_DATABASE= \
 python3 -m gc_cli
 ```
 
 > [!TIP]
 > Use `-h` to see the command and arguments the CLI uses.
+
+### Reliability Test Checker
+
+```bash
+MYSQL_HOST= \
+MYSQL_USER= \
+MYSQL_PASSWORD= \
+MYSQL_DATABASE= \
+python3 -m src.reliability_test_checker
+```

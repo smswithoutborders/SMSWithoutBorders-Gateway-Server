@@ -1,7 +1,7 @@
 """Database Models."""
 
 from datetime import datetime
-from peewee import Model, CharField, DateTimeField, ForeignKeyField
+from peewee import CharField, DateTimeField, ForeignKeyField
 
 from src.db import connect
 from src.utils import create_tables
@@ -9,7 +9,7 @@ from src.utils import create_tables
 database = connect()
 
 
-class GatewayClients(Model):
+class GatewayClients(database.Model):
     """Model representing Gateway Clients."""
 
     msisdn = CharField(primary_key=True)
@@ -26,7 +26,7 @@ class GatewayClients(Model):
         table_name = "gateway_clients"
 
 
-class ReliabilityTests(Model):
+class ReliabilityTests(database.Model):
     """Model representing Gateway Clients Reliability Tests."""
 
     start_time = DateTimeField(default=datetime.now)

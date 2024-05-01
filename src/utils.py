@@ -56,12 +56,11 @@ def create_tables(models, db):
         models: A list of Peewee Model instances.
         db: The database instance to create the tables in.
     """
-    with db.connection_context():
-        models_to_create = [
-            # pylint: disable=W0212
-            model
-            for model in models
-            if not db.table_exists(model._meta.table_name)
-        ]
-        if models_to_create:
-            db.create_tables(models_to_create)
+    models_to_create = [
+        # pylint: disable=W0212
+        model
+        for model in models
+        if not db.table_exists(model._meta.table_name)
+    ]
+    if models_to_create:
+        db.create_tables(models_to_create)

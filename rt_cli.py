@@ -13,6 +13,9 @@ from src.models import GatewayClients
 from src.models import ReliabilityTests
 from src.controllers import check_reliability_tests
 from src import aes
+from src.db import connect
+
+database = connect()
 
 DEKU_CLOUD_URL = os.environ.get("DEKU_CLOUD_URL")
 DEKU_CLOUD_PROJECT_REF = os.environ.get("DEKU_CLOUD_PROJECT_REF")
@@ -22,8 +25,11 @@ DEKU_CLOUD_AUTH_TOKEN = os.environ.get("DEKU_CLOUD_AUTH_TOKEN")
 
 SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("[RT CLI]")
 
 
 def make_deku_api_call(msisdn, payload):
@@ -222,4 +228,6 @@ def main():
 
 
 if __name__ == "__main__":
+    database.connect(reuse_if_open=True)
     main()
+    database.close()

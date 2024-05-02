@@ -46,14 +46,14 @@ def set_security_headers(response):
 @v3_blueprint.before_request
 def _db_connect():
     """Connect to the database before processing the request."""
+    database.close()
     database.connect()
 
 
 @v3_blueprint.teardown_request
 def _db_close(response):
     """Close the database connection after processing the request."""
-    if not database.is_closed():
-        database.close()
+    database.close()
     return response
 
 

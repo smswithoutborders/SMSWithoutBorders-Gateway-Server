@@ -6,10 +6,12 @@ import phonenumbers
 from phonenumbers import carrier, geocoder
 from playhouse.shortcuts import model_to_dict
 from src.models import GatewayClients
+from src.db import connect
 
-# Configure logging
+database = connect()
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("[GC CLI]")
 
 
 def get_country_operator(msisdn):
@@ -182,4 +184,6 @@ def main():
 
 
 if __name__ == "__main__":
+    database.connect(reuse_if_open=True)
     main()
+    database.close()

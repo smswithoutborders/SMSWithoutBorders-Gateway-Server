@@ -2,8 +2,7 @@
 
 import os
 import logging
-from playhouse.pool import PooledMySQLDatabase
-from peewee import DatabaseError
+from peewee import DatabaseError, MySQLDatabase
 from src.utils import ensure_database_exists
 
 logger = logging.getLogger(__name__)
@@ -39,13 +38,11 @@ def connect_to_mysql():
         DatabaseError: If failed to connect to the database.
     """
     try:
-        db = PooledMySQLDatabase(
+        db = MySQLDatabase(
             MYSQL_DATABASE,
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,
             host=MYSQL_HOST,
-            max_connections=32,
-            stale_timeout=300,
         )
         logger.info("Connected to MySQL database successfully.")
         return db

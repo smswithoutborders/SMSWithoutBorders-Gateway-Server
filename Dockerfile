@@ -1,7 +1,8 @@
 FROM python:3.9
 
 # Install necessary system dependencies
-RUN apt update && apt install -y apache2 apache2-dev python3-pip libapache2-mod-wsgi-py3 supervisor
+RUN apt-get update
+RUN apt-get install build-essential apache2 apache2-dev python3-dev default-libmysqlclient-dev supervisor -y
 
 # Set the working directory
 WORKDIR /gateway_server

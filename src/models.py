@@ -15,6 +15,7 @@ class GatewayClients(database.Model):
     msisdn = CharField(primary_key=True)
     country = CharField()
     operator = CharField()
+    operator_code = CharField()
     protocols = CharField()
     last_published_date = DateTimeField(default=datetime.now)
 

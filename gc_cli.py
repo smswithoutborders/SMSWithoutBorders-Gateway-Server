@@ -6,29 +6,62 @@ import phonenumbers
 from phonenumbers import carrier, geocoder
 from playhouse.shortcuts import model_to_dict
 from src.models import GatewayClients
-from src.db import connect
+from mccmnc import find_matches, update
 
-database = connect()
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger("[GC CLI]")
 
 
-def get_country_operator(msisdn):
+def get_plmn(country_code, operator, refresh=False):
     """
-    Get country and operator from MSISDN.
+    Get PLMN (Public Land Mobile Network) information based on country code and operator.
+
+    Args:
+        country_code (int): The country code.
+        operator (str): The operator name.
+        refresh (bool, optional): Whether to force a refresh of PLMN data. Defaults to False.
+
+    Returns:
+        dict: PLMN information.
+    """
+    if refresh:
+        update()
+
+    network = operator.split()[0].lower()
+
+    try:
+        plmn = find_matches(user_cc=country_code, user_network=network)
+    except FileNotFoundError:
+        update()
+        plmn = find_matches(user_cc=country_code, user_network=network)
+
+    return list(plmn.keys())[0]
+
+
+def get_operator_information(msisdn):
+    """
+    Get country and operator information from MSISDN
+        (Mobile Station International Subscriber Directory Number).
 
     Args:
         msisdn (str): The MSISDN of the client.
 
     Returns:
-        tuple: A tuple containing country and operator.
+        tuple: A tuple containing country, operator, and operator code.
+            - country (str): The country name.
+            - operator (str): The operator name.
+            - operator_code (str): The PLMN (Public Land Mobile Network) code.
     """
     try:
         number = phonenumbers.parse(msisdn, None)
         country = geocoder.description_for_number(number, "en")
+        country_code = number.country_code
         operator = carrier.name_for_number(number, "en")
-        return country, operator
+        operator_code = get_plmn(country_code, operator)
+        return country, operator, operator_code
     # pylint: disable=W0718
     except Exception:
         logger.error("Failed to parse MSISDN.", exc_info=True)
@@ -47,10 +80,18 @@ def create_client(msisdn, protocols):
         None
     """
     try:
-        country, operator = get_country_operator(msisdn)
+        country, operator, operator_code = get_operator_information(msisdn)
 
-        if country is None or operator is None:
-            logger.error("Country and/or operator information is missing.")
+        if country is None or operator is None or operator_code is None:
+            logger.error(
+                "Failed to retrieve complete operator information for the provided MSISDN."
+            )
+            if country is None:
+                logger.error("Country information is missing.")
+            if operator is None:
+                logger.error("Operator information is missing.")
+            if operator_code is None:
+                logger.error("Operator code information is missing.")
             return
 
         # pylint: disable=W0212,E1101
@@ -59,15 +100,16 @@ def create_client(msisdn, protocols):
                 msisdn=msisdn,
                 country=country,
                 operator=operator,
+                operator_code=operator_code,
                 protocols=protocols,
             )
 
             logger.info("Client created successfully.")
 
-        print("-" * 60)
-        print(f"{'Client Details':=^60}")
-        for key, value in model_to_dict(client).items():
-            print(f"{key.upper()}: {value}")
+            print("-" * 60)
+            print(f"{'Client Details':=^60}")
+            for key, value in model_to_dict(client).items():
+                print(f"{key.upper()}: {value}")
     # pylint: disable=W0718
     except Exception:
         logger.error("Failed to create client.", exc_info=True)
@@ -84,25 +126,27 @@ def view_client(msisdn=None):
     Returns:
         None
     """
-    try:
-        query = GatewayClients.select().dicts()
+    # pylint: disable=W0212,E1101
+    with GatewayClients._meta.database.atomic():
+        try:
+            query = GatewayClients.select().dicts()
 
-        if msisdn:
-            query = query.where(GatewayClients.msisdn == msisdn).dicts()
+            if msisdn:
+                query = query.where(GatewayClients.msisdn == msisdn).dicts()
 
-        if not query:
-            logger.info("No clients found.")
-            return
+            if not query:
+                logger.info("No clients found.")
+                return
 
-        print(f"{'Clients':=^60}")
-        for test in query:
-            print("-" * 60)
-            for key, value in test.items():
-                print(f"{key.upper()}: {value}")
+            print(f"{'Clients':=^60}")
+            for test in query:
+                print("-" * 60)
+                for key, value in test.items():
+                    print(f"{key.upper()}: {value}")
 
-    # pylint: disable=W0718
-    except Exception:
-        logger.error("Failed to get client(s).", exc_info=True)
+        # pylint: disable=W0718
+        except Exception:
+            logger.error("Failed to get client(s).", exc_info=True)
 
 
 def update_client(msisdn, country=None, operator=None, protocols=None):
@@ -118,25 +162,27 @@ def update_client(msisdn, country=None, operator=None, protocols=None):
     Returns:
         None
     """
-    try:
-        client = GatewayClients.get_or_none(msisdn=msisdn)
-        if client:
-            if country:
-                client.country = country
+    # pylint: disable=W0212,E1101
+    with GatewayClients._meta.database.atomic():
+        try:
+            client = GatewayClients.get_or_none(msisdn=msisdn)
+            if client:
+                if country:
+                    client.country = country
 
-            if operator:
-                client.operator = operator
+                if operator:
+                    client.operator = operator
 
-            if protocols:
-                client.protocols = protocols
+                if protocols:
+                    client.protocols = protocols
 
-            client.save()
-            logger.info("Client updated successfully.")
-        else:
-            logger.info("No client found with MSISDN: %s", msisdn)
-    # pylint: disable=W0718
-    except Exception:
-        logger.error("Failed to update record.", exc_info=True)
+                client.save()
+                logger.info("Client updated successfully.")
+            else:
+                logger.info("No client found with MSISDN: %s", msisdn)
+        # pylint: disable=W0718
+        except Exception:
+            logger.error("Failed to update record.", exc_info=True)
 
 
 def main():
@@ -184,6 +230,4 @@ def main():
 
 
 if __name__ == "__main__":
-    database.connect(reuse_if_open=True)
     main()
-    database.close()

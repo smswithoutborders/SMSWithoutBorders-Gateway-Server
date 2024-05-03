@@ -21,12 +21,12 @@ from src import publisher
 from src.users import Users
 from src.users_entity import UsersEntity
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("[FTP SERVER]")
+logger.setLevel(logging.INFO)
 
 FTP_USERNAME = os.environ["FTP_USERNAME"]
 FTP_PASSWORD = os.environ["FTP_PASSWORD"]

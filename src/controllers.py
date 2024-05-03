@@ -26,31 +26,36 @@ def query_gateway_clients(filters, page, per_page):
     Returns:
         list: A list of dictionaries containing client data along with associated test data.
     """
-    query = GatewayClients.select().paginate(page, per_page)
-
-    conditions = []
-    for key, value in filters.items():
-        if value is not None:
-            if key in ("country", "operator", "protocol"):
-                conditions.append(
-                    fn.lower(getattr(GatewayClients, key)) == value.lower()
-                )
-            else:
-                conditions.append(getattr(GatewayClients, key) == value)
-
-    if conditions:
-        query = query.where(*conditions)
 
     results = []
-    for client in query:
-        tests = ReliabilityTests.select().where(
-            ReliabilityTests.msisdn == client.msisdn
-        )
-        #  pylint: disable=E1133
-        test_data = [model_to_dict(test, False) for test in tests]
-        client_data = model_to_dict(client)
-        client_data["test_data"] = test_data
-        results.append(client_data)
+
+    with database.atomic():
+        conditions = []
+
+        for key, value in filters.items():
+            if value is not None:
+                if key in ("country", "operator", "protocol"):
+                    conditions.append(
+                        fn.lower(getattr(GatewayClients, key)) == value.lower()
+                    )
+                else:
+                    conditions.append(getattr(GatewayClients, key) == value)
+
+        query = GatewayClients.select().paginate(page, per_page)
+
+        if conditions:
+            query = query.where(*conditions)
+
+        for client in query:
+            tests = ReliabilityTests.select().where(
+                ReliabilityTests.msisdn == client.msisdn
+            )
+            #  pylint: disable=E1133
+            test_data = [model_to_dict(test, False) for test in tests]
+            client_data = model_to_dict(client)
+            client_data["test_data"] = test_data
+            client_data["protocols"] = client_data["protocols"].split(",")
+            results.append(client_data)
 
     return results
 
@@ -80,20 +85,22 @@ def check_reliability_tests(check_duration=None):
     """
     check_duration = check_duration or datetime.timedelta(minutes=15)
     current_time = datetime.datetime.now()
-    try:
-        # pylint: disable=E1133,E1101,W0212
-        tests = ReliabilityTests.select().where(
-            ~(ReliabilityTests.status.in_(["success", "timedout"]))
-        )
 
-        for test in tests:
-            if current_time - test.start_time >= check_duration:
-                logger.debug(
-                    "Test ID %d has timed out. Updating status to 'timeout'",
-                    test.id,
-                )
-                test.status = "timedout"
-                test.save()
-                logger.info("Status updated for Test ID %d", test.id)
-    except OperationalError:
-        logger.error("Database error occurred", exc_info=True)
+    with database.atomic():
+        try:
+            # pylint: disable=E1133,E1101,W0212
+            tests = ReliabilityTests.select().where(
+                ~(ReliabilityTests.status.in_(["success", "timedout"]))
+            )
+
+            for test in tests:
+                if current_time - test.start_time >= check_duration:
+                    logger.debug(
+                        "Test ID %d has timed out. Updating status to 'timeout'",
+                        test.id,
+                    )
+                    test.status = "timedout"
+                    test.save()
+                    logger.info("Status updated for Test ID %d", test.id)
+        except OperationalError:
+            logger.error("Database error occurred", exc_info=True)

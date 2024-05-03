@@ -24,7 +24,6 @@ def main():
         check_interval.total_seconds() / 60,
     )
     while True:
-        database.connect(reuse_if_open=True)
         try:
             logger.info(
                 "Starting reliability tests check at %s",
@@ -37,7 +36,6 @@ def main():
                     "%Y-%m-%d %H:%M:%S"
                 ),
             )
-            database.close()
             time.sleep(check_interval.total_seconds())
         except KeyboardInterrupt:
             logger.info("Received KeyboardInterrupt. Exiting...")
@@ -46,8 +44,6 @@ def main():
         except Exception as e:
             logger.error("An unexpected error occurred: %s", e)
             time.sleep(10)
-        finally:
-            database.close()
 
 
 if __name__ == "__main__":

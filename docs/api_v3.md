@@ -49,7 +49,8 @@ Get gateway clients with optional filters.
 		"last_published_date": "Wed, 24 Apr 2024 19:43:02 GMT",
 		"msisdn": "+xxxxxxxxx",
 		"operator": "OPERATOR",
-		"protocols": "https",
+		"operator_code": "62401",
+		"protocols": ["https", "smtp", "ftp"],
 		"test_data": [
 			{
 				"id": 1,
@@ -59,11 +60,9 @@ Get gateway clients with optional filters.
 				"sms_sent_time": "Wed, 24 Apr 2024 22:47:30 GMT",
 				"start_time": "Wed, 24 Apr 2024 22:47:28 GMT",
 				"status": "success"
-			},
-			...
+			}
 		]
-	},
-    ...
+	}
 ]
 ```
 

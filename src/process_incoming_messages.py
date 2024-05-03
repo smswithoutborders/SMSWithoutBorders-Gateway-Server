@@ -71,13 +71,15 @@ def validate_data(data):
         raise InvalidDataError("Missing Text")
 
 
-def decrypt_text(text, shared_key):
+def decrypt_text(encrypted_text, shared_key, encoding_type=None):
     """
-    Decrypt the provided text.
+    Decrypt the provided encrypted text using AES algorithm.
 
     Args:
-        text (str): Encrypted text to decrypt.
+        encrypted_text (str): Encrypted text to decrypt.
         shared_key (str): Shared key for decryption.
+        encoding_type (str, optional): Type of encoding applied to the encrypted text
+            before encryption (e.g., 'base64'). Defaults to None.
 
     Returns:
         str: Decrypted text.
@@ -86,15 +88,23 @@ def decrypt_text(text, shared_key):
         DecryptError: If decryption fails.
     """
     try:
-        text = base64.b64decode(text)
-        iv = text[:16]
-        text = text[16:]
-        text = base64.b64decode(text)
-        decrypted_text = aes.AESCipher.decrypt(data=text, iv=iv, shared_key=shared_key)
+        encrypted_bytes = base64.b64decode(encrypted_text)
+        iv = encrypted_bytes[:16]
+        ciphertext = encrypted_bytes[16:]
+
+        if encoding_type == "base64":
+            ciphertext = base64.b64decode(ciphertext)
+
+        decrypted_text = aes.AESCipher.decrypt(
+            data=ciphertext, iv=iv, shared_key=shared_key
+        )
         return str(decrypted_text, "utf-8")
     except Exception as err:
-        logger.error("Failed to Decrypt")
-        raise DecryptError("Failed to Decrypt") from err
+        logger.error(
+            "Failed to decrypt the text%s",
+            " using " + encoding_type if encoding_type else "",
+        )
+        raise DecryptError("Failed to decrypt the text") from err
 
 
 def process_data(data, be_pub_lib, users):
@@ -130,7 +140,7 @@ def process_data(data, be_pub_lib, users):
             logging.error("no shared key for user, strange")
             raise SharedKeyError("Shared key error")
 
-        decrypted_text = decrypt_text(data["text"], shared_key)
+        decrypted_text = decrypt_text(data["text"], shared_key, "base64")
 
         platform_letter = decrypted_text[0]
         platform_name = be_pub_lib.get_platform_name_from_letter(

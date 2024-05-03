@@ -22,11 +22,11 @@ from src.users import Users
 from src.users_entity import UsersEntity
 
 logging.basicConfig(
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("[FTP SERVER]")
-logger.setLevel(logging.INFO)
 
 FTP_USERNAME = os.environ["FTP_USERNAME"]
 FTP_PASSWORD = os.environ["FTP_PASSWORD"]

@@ -14,3 +14,5 @@ tmp/*
 data
 *.sh
 repos/
+.env.*
+mccmnc.json

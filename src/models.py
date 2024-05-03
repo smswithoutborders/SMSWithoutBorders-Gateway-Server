@@ -1,0 +1,48 @@
+"""Database Models."""
+
+from datetime import datetime
+from peewee import CharField, DateTimeField, ForeignKeyField
+
+from src.db import connect
+from src.utils import create_tables
+
+database = connect()
+
+
+class GatewayClients(database.Model):
+    """Model representing Gateway Clients."""
+
+    msisdn = CharField(primary_key=True)
+    country = CharField()
+    operator = CharField()
+    operator_code = CharField()
+    protocols = CharField()
+    last_published_date = DateTimeField(default=datetime.now)
+
+    # pylint: disable=R0903
+    class Meta:
+        """Meta class to define database connection."""
+
+        database = database
+        table_name = "gateway_clients"
+
+
+class ReliabilityTests(database.Model):
+    """Model representing Gateway Clients Reliability Tests."""
+
+    start_time = DateTimeField(default=datetime.now)
+    sms_sent_time = DateTimeField(null=True)
+    sms_received_time = DateTimeField(null=True)
+    sms_routed_time = DateTimeField(null=True)
+    status = CharField(default="pending")
+    msisdn = ForeignKeyField(GatewayClients, column_name="msisdn")
+
+    # pylint: disable=R0903
+    class Meta:
+        """Meta class to define database connection."""
+
+        database = database
+        table_name = "reliability_tests"
+
+
+create_tables([GatewayClients, ReliabilityTests], database)

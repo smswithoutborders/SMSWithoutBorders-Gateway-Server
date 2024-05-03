@@ -89,6 +89,7 @@ def decrypt_text(text, shared_key):
         text = base64.b64decode(text)
         iv = text[:16]
         text = text[16:]
+        text = base64.b64decode(text)
         decrypted_text = aes.AESCipher.decrypt(data=text, iv=iv, shared_key=shared_key)
         return str(decrypted_text, "utf-8")
     except Exception as err:

@@ -23,11 +23,17 @@ Ensure the following environment variables are set:
 - `MYSQL_DATABASE`: The name of the MySQL database where the reliability tests
   records will be stored.
 
-> [!NOTE] 
-> The Reliability Tests CLI depends on the availability of gateway
-> clients. Make sure to have gateway clients set up before triggering
-> reliability tests. For information on setting up gateway clients, refer to the
-> [Gateway Clients CLI documentation](gateway_clients_cli.md).
+> [!NOTE]
+>
+> - To use the Reliability Tests CLI, you need to set up credentials for
+>   accessing the Deku Cloud service. If you're not familiar with Deku Cloud or
+>   need guidance on obtaining credentials, refer to the
+>   [Deku Cloud tutorials](https://staging.smswithoutborders.com:3000/#/tutorial)
+>   for detailed instructions.
+> - The Reliability Tests CLI depends on the availability of gateway clients.
+>   Make sure to have gateway clients set up before triggering reliability
+>   tests. For information on setting up gateway clients, refer to the
+>   [Gateway Clients CLI documentation](gateway_clients_cli.md).
 
 ## Installation
 
@@ -122,7 +128,8 @@ crontab -e
 0 2 * * * /usr/bin/python /path/to/rt_cli.py start --all >> /path/to/logfile.log 2>&1
 ```
 
-> [!INFO] Replace `/usr/bin/python` with the path to your Python interpreter,
+> [!INFO] 
+> Replace `/usr/bin/python` with the path to your Python interpreter,
 > `/path/to/rt_cli.py` with the actual path to your script, and
 > `/path/to/logfile.log` with the path where you want to store the log output.
 

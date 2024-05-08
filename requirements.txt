@@ -11,7 +11,7 @@ cryptography==42.0.5
 dataclasses-json==0.5.14
 email-reply-parser==0.5.12
 Flask==2.3.2
-Flask-Cors==4.0.0
+Flask-Cors==4.0.1
 gevent==23.9.0
 google-api-core==2.18.0
 google-api-python-client==2.66.0

@@ -21,7 +21,8 @@ sudo apt install python3-dev libmysqlclient-dev apache2 apache2-dev make libapac
 ```
 
 > [!NOTE] 
-> This gateway server has strong dependencies on the [Backend](https://github.com/smswithoutborders/SMSwithoutborders-BE) 
+> The gateway server has strong dependencies on the 
+> [Backend](https://github.com/smswithoutborders/SMSwithoutborders-BE) 
 > User Databases.
 
 ## Linux Environment Variables
@@ -180,6 +181,20 @@ Synchronization prepares the app for secured conversation using shared keys.
 3. Once the user has performed the necessary handshake and the information
    exchange has begun, the websocket sends an acknowledgment text `200- ack`.
 
+**Reliability Tests**
+
+The Reliability Tests CLI (`rt_cli`) can be used
+to trigger and view reliability tests for gateway clients. Refer to the
+[Reliability Tests CLI documentation](/docs/reliability_tests_cli.md) for usage and
+installation instructions.
+
+**Gateway Clients Management**
+
+The Gateway Clients CLI (`gc_cli`) provides
+functionality to create, view, and update gateway client records. Check
+out the [Gateway Clients CLI documentation](/docs/gateway_clients_cli.md) for more
+details on usage and installation.
+
 ## Testing
 
 - Testing [Users model](gateway_server/users.py):
@@ -258,46 +273,4 @@ MAIL_FOLDER= \
 SSL_CERTIFICATE= \
 SSL_KEY= \
 python3 -m src.imap_listener
-```
-
-### Reliability Test CLI
-
-```bash
-MYSQL_HOST= \
-MYSQL_USER= \
-MYSQL_PASSWORD= \
-MYSQL_DATABASE= \
-SHARED_KEY= \
-DEKU_CLOUD_URL= \
-DEKU_CLOUD_PROJECT_REF= \
-DEKU_CLOUD_SERVICE_ID= \
-DEKU_CLOUD_ACCOUNT_SID= \
-DEKU_CLOUD_AUTH_TOKEN= \
-python3 -m rt_cli
-```
-
-> [!TIP]
-> Use `-h` to see the command and arguments the CLI uses.
-
-### GateWay Clients CLI
-
-```bash
-MYSQL_HOST= \
-MYSQL_USER= \
-MYSQL_PASSWORD= \
-MYSQL_DATABASE= \
-python3 -m gc_cli
-```
-
-> [!TIP]
-> Use `-h` to see the command and arguments the CLI uses.
-
-### Reliability Test Checker
-
-```bash
-MYSQL_HOST= \
-MYSQL_USER= \
-MYSQL_PASSWORD= \
-MYSQL_DATABASE= \
-python3 -m src.reliability_test_checker
 ```

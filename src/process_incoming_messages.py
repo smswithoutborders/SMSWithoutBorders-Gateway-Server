@@ -186,16 +186,8 @@ def process_test(data):
         data = parse_json_data(data)
         validate_data(data)
 
-        if not SHARED_KEY_FILE:
-            logger.error("SHARED_KEY_FILE environment variable not set.")
-            return False
-
         with open(SHARED_KEY_FILE, "r", encoding="utf-8") as f:
             encryption_key = f.readline().strip()[:32]
-
-        if not encryption_key:
-            logger.error("Encryption key is empty or invalid.")
-            return False
 
         plaintext = decrypt_text(data["text"], encryption_key)
         decrypted_test_data = parse_json_data(plaintext)
@@ -238,4 +230,4 @@ def process_test(data):
         return False
     except Exception as error:
         logger.error("An error occurred during test data processing: %s", error)
-        raise error
+        return False

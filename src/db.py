@@ -2,7 +2,6 @@
 
 import os
 import logging
-from playhouse.shortcuts import ReconnectMixin
 from peewee import DatabaseError, MySQLDatabase
 from src.utils import ensure_database_exists
 
@@ -12,10 +11,6 @@ MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE")
 MYSQL_HOST = os.environ.get("MYSQL_HOST")
 MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD")
 MYSQL_USER = os.environ.get("MYSQL_USER")
-
-
-class ReconnectMySQLDatabase(ReconnectMixin, MySQLDatabase):
-    pass
 
 
 def connect():
@@ -43,7 +38,7 @@ def connect_to_mysql():
         DatabaseError: If failed to connect to the database.
     """
     try:
-        db = ReconnectMySQLDatabase(
+        db = MySQLDatabase(
             MYSQL_DATABASE,
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,

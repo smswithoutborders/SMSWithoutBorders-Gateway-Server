@@ -7,11 +7,12 @@ import os
 from datetime import datetime
 
 from src import aes, reliability_tests
-from src.models import ReliabilityTests
 
 logger = logging.getLogger(__name__)
 
 SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
+
+# pylint: disable=E1101,W0212,W0718
 
 
 class UserNotFoundError(Exception):
@@ -168,7 +169,6 @@ def process_data(data, be_pub_lib, users):
         raise error
 
 
-# pylint: disable=E1101,W0212,W0718
 def process_test(data):
     """
     Process incoming test data.
@@ -201,26 +201,27 @@ def process_test(data):
 
         reliability_tests.update_timed_out_tests_status()
 
-        with ReliabilityTests._meta.database.connection_context():
-            test = ReliabilityTests.get_or_none(
-                ReliabilityTests.sms_routed_time.is_null(),
-                id=test_id,
-                msisdn=test_msisdn,
-                status="running",
-            )
+        date_sent = int(data["date_sent"]) / 1000
+        date = int(data["date"]) / 1000
 
-            if not test:
-                logger.error("No running test record found for MSISDN %s.", test_msisdn)
-                return False
+        fields = {
+            "status": "success",
+            "sms_routed_time": datetime.now(),
+            "sms_sent_time": datetime.fromtimestamp(date_sent),
+            "sms_received_time": datetime.fromtimestamp(date),
+        }
+        criteria = {
+            "sms_routed_time": "is_null",
+            "msisdn": test_msisdn,
+            "status": "running",
+        }
+        updated_tests = reliability_tests.update_test_for_client(
+            test_id, fields, criteria
+        )
 
-            date_sent = int(data["date_sent"]) / 1000
-            date = int(data["date"]) / 1000
-
-            test.status = "success"
-            test.sms_routed_time = datetime.now()
-            test.sms_sent_time = datetime.fromtimestamp(date_sent)
-            test.sms_received_time = datetime.fromtimestamp(date)
-            test.save()
+        if updated_tests < 1:
+            logger.error("No running test record found for MSISDN %s.", test_msisdn)
+            return False
 
         return True
 

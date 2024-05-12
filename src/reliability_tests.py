@@ -4,14 +4,16 @@ import logging
 import datetime
 
 from playhouse.shortcuts import model_to_dict
+from peewee import DoesNotExist
 
-from src.db import connect
 from src.models import ReliabilityTests
 from src import gateway_clients
 
-database = connect()
-
 logger = logging.getLogger(__name__)
+
+# pylint: disable=W0718,E1101,W0212
+
+database = ReliabilityTests._meta.database
 
 
 class PreCommitError(Exception):
@@ -81,9 +83,7 @@ def get_tests_for_client(
     if not gateway_clients.get_by_msisdn(msisdn):
         return None
 
-    if filters is None:
-        filters = {}
-
+    filters = filters or {}
     filters["msisdn"] = msisdn
 
     tests = get_all(filters, page, per_page)
@@ -123,7 +123,6 @@ def update_timed_out_tests_status(check_interval: int = 15) -> None:
         logger.info("Updated %d tests to 'timedout' status.", updated_count)
 
 
-# pylint: disable=W0718,E1101,W0212
 def create_test_for_client(
     msisdn: str, status: str, pre_commit_funcs: list = None
 ) -> dict:
@@ -182,7 +181,7 @@ def create_test_for_client(
         )
         return None
 
-    with ReliabilityTests._meta.database.atomic() as transaction:
+    with database.atomic() as transaction:
         try:
             new_test = ReliabilityTests.create(msisdn=msisdn, status=status)
             new_test_data = model_to_dict(new_test, False)
@@ -214,3 +213,42 @@ def create_test_for_client(
                 exc_info=True,
             )
             return None
+
+
+def update_test_for_client(test_id: int, fields: dict, criteria: dict = None) -> int:
+    """
+    Update a reliability test with specified fields based on given criteria.
+
+    Args:
+        test_id (int): The ID of the test to be updated.
+        fields (dict): A dictionary containing the fields and their new
+            values to update.
+        criteria (dict, optional): A dictionary containing filtering criteria
+            to identify the test to update. Defaults to None.
+
+    Returns:
+        int: The number of rows updated in the database.
+    """
+    try:
+        with database.atomic():
+            query = ReliabilityTests.update(**fields).where(
+                ReliabilityTests.id == test_id
+            )
+
+            criteria = criteria or {}
+
+            if "id" in criteria:
+                del criteria["id"]
+
+            for key, value in criteria.items():
+                if value == "is_null":
+                    query = query.where(getattr(ReliabilityTests, key).is_null())
+                else:
+                    query = query.where(getattr(ReliabilityTests, key) == value)
+
+            updated_count = query.execute()
+            logger.info("Updated %d rows for test with ID '%d'", updated_count, test_id)
+            return updated_count
+    except DoesNotExist:
+        logger.error("Test with ID '%d' does not exist.", test_id)
+        return 0

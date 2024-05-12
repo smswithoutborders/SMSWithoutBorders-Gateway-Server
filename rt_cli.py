@@ -2,17 +2,13 @@
 
 import os
 import logging
-import datetime
 import json
 import base64
 import argparse
 import requests
-from playhouse.shortcuts import model_to_dict
 
-from src.models import GatewayClients
 from src.models import ReliabilityTests
-from src.controllers import check_reliability_tests
-from src import aes
+from src import aes, gateway_clients, reliability_tests
 
 DEKU_CLOUD_URL = os.environ.get("DEKU_CLOUD_URL")
 DEKU_CLOUD_PROJECT_REF = os.environ.get("DEKU_CLOUD_PROJECT_REF")
@@ -30,16 +26,24 @@ logging.basicConfig(
 logger = logging.getLogger("[RT CLI]")
 
 
-def make_deku_api_call(msisdn, payload):
-    """Make API call to Deku Cloud.
+def make_deku_api_call(test_data, mock=False):
+    """Make an API call to Deku Cloud to send test data.
 
     Args:
-        msisdn (str): MSISDN to be passed in the API call.
-        payload (str): Payload to be passed in the API call.
+        test_data: The test data containing 'msisdn' and 'base64 encoded ciphertext'
+        mock (bool): Whether to mock the API call or not.
 
     Returns:
-        bool: True if API call is successful, False otherwise.
+        int or None: HTTP status code of the API call or None if failed.
     """
+    msisdn, payload = test_data
+
+    if mock:
+        logger.info("Mocking API call to Deku Cloud.")
+        logger.info("MSISDN: %s", msisdn)
+        logger.info("PAYLOAD: %s", payload)
+        return 200
+
     if (
         not DEKU_CLOUD_URL
         or not DEKU_CLOUD_ACCOUNT_SID
@@ -48,7 +52,7 @@ def make_deku_api_call(msisdn, payload):
         or not DEKU_CLOUD_SERVICE_ID
     ):
         logger.error("Deku Cloud environment variables are not set.")
-        return False
+        return None
 
     data = {"sid": "", "to": msisdn, "body": payload}
     auth = (DEKU_CLOUD_ACCOUNT_SID, DEKU_CLOUD_AUTH_TOKEN)
@@ -57,20 +61,21 @@ def make_deku_api_call(msisdn, payload):
     try:
         response = requests.post(url, json=data, auth=auth, timeout=10)
         response.raise_for_status()
-        return True
+        return response.status_code
     except requests.exceptions.RequestException:
         logger.error("Failed to make API call to Deku Cloud.", exc_info=True)
-        return False
+        return None
 
 
+# pylint: disable=W0718
 def encrypt_payload(payload):
     """Encrypts test payload using AES encryption.
 
     Args:
-        payload (bytes): Test Payload to be encrypted.
+        payload (bytes): The test payload to be encrypted.
 
     Returns:
-        str: The base64 encoded ciphertext.
+        str or None: The base64 encoded ciphertext if successful, None otherwise.
     """
     if not SHARED_KEY_FILE:
         logger.error("SHARED_KEY_FILE environment variable not set.")
@@ -86,7 +91,6 @@ def encrypt_payload(payload):
     try:
         ciphertext = aes.AESCipher.encrypt(shared_key=encryption_key, data=payload)
         return base64.b64encode(ciphertext).decode("utf-8")
-    # pylint: disable=W0718
     except Exception:
         logger.error("Failed to encrypt payload.", exc_info=True)
         return None
@@ -99,19 +103,30 @@ def create_test_payload(test_data):
         test_data (dict): Test data containing 'id' and 'msisdn'.
 
     Returns:
-        str: The base64 encoded ciphertext of the encrypted payload.
+        tuple or None: Tuple containing MSISDN and base64 encoded ciphertext
+            of the encrypted payload, or None if creation failed.
     """
     test_payload = {"test_id": test_data["id"], "msisdn": test_data["msisdn"]}
     test_ciphertext = encrypt_payload(payload=bytes(json.dumps(test_payload), "utf-8"))
-    return test_ciphertext
+
+    if not test_ciphertext:
+        logger.error(
+            "Failed to create test payload for MSISDN: %s",
+            test_data["msisdn"],
+        )
+        return None
+
+    return test_data["msisdn"], test_ciphertext
 
 
-def start_tests(msisdn=None, all_tests=False):
+def start_tests(msisdn=None, all_tests=False, mock_api=False):
     """Start reliability tests for specified MSISDN or all MSISDNs.
 
     Args:
         msisdn (str, optional): MSISDN for which tests are to be started.
-        all_tests (bool, optional): Flag to indicate if tests are to be started for all MSISDNs.
+        all_tests (bool, optional): Flag to indicate if tests are to be
+            started for all MSISDNs.
+        mock_api (bool, optional): Whether to mock the API call or not.
     """
     if not msisdn and not all_tests:
         logger.error(
@@ -119,84 +134,50 @@ def start_tests(msisdn=None, all_tests=False):
         )
         return
 
-    try:
-        # pylint: disable=E1101,W0212
-        with GatewayClients._meta.database.atomic():
-            if all_tests:
-                clients = GatewayClients.select()
-            else:
-                clients = [GatewayClients.get_or_none(msisdn=msisdn)]
+    if all_tests:
+        clients = gateway_clients.get_all()
+    else:
+        clients = [gateway_clients.get_by_msisdn(msisdn=msisdn)]
 
-            for client in clients:
-                if not client:
-                    logger.info("No client found with MSISDN: %s", msisdn)
-                    continue
+    for client in clients:
+        if not client:
+            logger.info("No client found with MSISDN: %s", msisdn)
+            continue
 
-                with ReliabilityTests._meta.database.atomic() as transaction:
-                    existing_tests = ReliabilityTests.select().where(
-                        ReliabilityTests.msisdn == client.msisdn,
-                        ReliabilityTests.status == "running",
-                    )
+        pre_commit_funcs = [
+            (create_test_payload, ()),
+            (make_deku_api_call, (mock_api,)),
+        ]
 
-                    if existing_tests:
-                        logger.info(
-                            "Tests for MSISDN %s are already running.", client.msisdn
-                        )
-                        continue
-
-                    test = ReliabilityTests.create(msisdn=client.msisdn)
-                    test_dict = model_to_dict(test, recurse=False)
-                    test_payload = create_test_payload(test_dict)
-
-                    if not test_payload:
-                        logger.error(
-                            "Failed to create test payload for MSISDN: %s",
-                            test_dict["msisdn"],
-                        )
-                        transaction.rollback()
-                        continue
-
-                    if not make_deku_api_call(test_dict["msisdn"], test_payload):
-                        logger.error(
-                            "Failed to start tests for MSISDN: %s", test_dict["msisdn"]
-                        )
-                        transaction.rollback()
-                        continue
-
-                    test.status = "running"
-                    test.save()
-                    logger.info("Started tests for MSISDN: %s", test_dict["msisdn"])
-
-    # pylint: disable=W0718
-    except Exception:
-        logger.error("An unexpected error occurred:", exc_info=True)
+        reliability_tests.create_test_for_client(
+            client["msisdn"], "running", pre_commit_funcs
+        )
 
 
+# pylint: disable=E1101,W0212,W0718
 def view_test_data(msisdn=None):
     """View test data for specified MSISDN or all test data in the database.
 
     Args:
         msisdn (str, optional): MSISDN for which test data is to be viewed.
     """
-    # pylint: disable=E1101,W0212
     with ReliabilityTests._meta.database.atomic():
         try:
-            query = ReliabilityTests.select().dicts()
+            tests = reliability_tests.get_all()
 
             if msisdn:
-                query = query.where(ReliabilityTests.msisdn == msisdn).dicts()
+                tests = reliability_tests.get_tests_for_client(msisdn)
 
-            if not query:
+            if not tests:
                 logger.info("No tests found.")
                 return
 
             print(f"{'Tests':=^60}")
-            for test in query:
+            for test in tests:
                 print("-" * 60)
                 for key, value in test.items():
                     print(f"{key.upper()}: {value}")
 
-        # pylint: disable=W0718
         except Exception:
             logger.error("Failed to get test(s).", exc_info=True)
 
@@ -219,13 +200,14 @@ def main():
         "--all", action="store_true", help="Start tests for all MSISDNs"
     )
 
+    parser.add_argument("--mock-api", action="store_true", help="Mock the API call")
+
     args = parser.parse_args()
 
-    check_duration = datetime.timedelta(minutes=15)
-    check_reliability_tests(check_duration)
+    reliability_tests.update_timed_out_tests_status()
 
     if args.action == "start":
-        start_tests(args.msisdn, args.all)
+        start_tests(args.msisdn, args.all, args.mock_api)
     elif args.action == "view":
         view_test_data(args.msisdn)
 

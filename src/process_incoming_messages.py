@@ -6,9 +6,8 @@ import json
 import os
 from datetime import datetime
 
-from src import aes
+from src import aes, reliability_tests
 from src.models import ReliabilityTests
-from src.controllers import check_reliability_tests
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +168,7 @@ def process_data(data, be_pub_lib, users):
         raise error
 
 
+# pylint: disable=E1101,W0212,W0718
 def process_test(data):
     """
     Process incoming test data.
@@ -199,9 +199,8 @@ def process_test(data):
             logger.error("Test data is incomplete.")
             return False
 
-        check_reliability_tests()
+        reliability_tests.update_timed_out_tests_status()
 
-        # pylint: disable=E1101,W0212
         with ReliabilityTests._meta.database.connection_context():
             test = ReliabilityTests.get_or_none(
                 ReliabilityTests.sms_routed_time.is_null(),

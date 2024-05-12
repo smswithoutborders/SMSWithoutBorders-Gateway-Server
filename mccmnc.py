@@ -1,3 +1,15 @@
+"""
+A module for matching Mobile Country Codes (MCC) and Mobile Network Codes (MNC) 
+against a JSON dataset scraped from https://www.mcc-mnc.com/.
+
+References:
+    - Original codebase: https://github.com/jbjulia/mcc-mnc
+        This module is based on the code from the GitHub repository linked above. 
+        It provides functionality to match MCCs and MNCs against a JSON dataset 
+        containing Public Land Mobile Network (PLMN) information scraped from the 
+        MCC-MNC website.
+"""
+
 import json
 import os
 import sys
@@ -17,12 +29,15 @@ def find_matches(
     """
     Match the given criteria against the JSON data.
 
-    :param user_cc: User's desired Country Code (CC)
-    :param user_mcc: User's desired Mobile Country Code (MCC)
-    :param user_mnc: User's desired Mobile Network Code (MNC)
-    :param user_plmn: User's desired Public Land Mobile Network (PLMN)
-    :param user_network: User's desired Network
-    :return: Dictionary of matching PLMNs with their details
+    Args:
+        user_cc (str, optional): User's desired Country Code (CC).
+        user_mcc (str, optional): User's desired Mobile Country Code (MCC).
+        user_mnc (str, optional): User's desired Mobile Network Code (MNC).
+        user_plmn (str, optional): User's desired Public Land Mobile Network (PLMN).
+        user_network (str, optional): User's desired Network.
+
+    Returns:
+        dict: Dictionary of matching PLMNs with their details.
     """
     match_list = {}
 
@@ -46,6 +61,12 @@ def find_matches(
 
 
 def update():
+    """
+    Update the JSON data by scraping the MCC-MNC website.
+
+    Returns:
+        None
+    """
     try:
         with urlopen(MCC_MNC_URL) as raw:
             print(f"Decoding raw HTML from {MCC_MNC_URL}")
@@ -84,7 +105,7 @@ def update():
 
         progress_bar.close()
 
-        with open(JSON_PATH, "w+") as json_file:
+        with open(JSON_PATH, "w+", encoding="utf-8") as json_file:
             print(f"\nSaving JSON dictionary to {JSON_PATH}.")
             json.dump(json_data, json_file, indent=4, sort_keys=True)
 

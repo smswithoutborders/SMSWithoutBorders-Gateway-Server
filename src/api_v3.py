@@ -107,6 +107,9 @@ def get_gateway_client_tests(msisdn):
         msisdn, page=int(page), per_page=int(per_page)
     )
 
+    if not client_tests:
+        raise NotFound(f"No gateway client found with MSISDN: {msisdn}")
+
     return jsonify(client_tests)
 
 

@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_all(filters=None, page=None, per_page=None) -> list:
-    """
-    Get all gateway clients according to the filters, pagination.
+    """Get all gateway clients according to the filters, pagination.
 
     Args:
         filters (dict, optional): A dictionary containing filtering criteria.
@@ -70,9 +69,8 @@ def get_all(filters=None, page=None, per_page=None) -> list:
     return results
 
 
-def get_by_msisdn(msisdn) -> dict:
-    """
-    Retrieve a gateway client by its MSISDN.
+def get_by_msisdn(msisdn: str) -> dict:
+    """Retrieve a gateway client by its MSISDN.
 
     Args:
         msisdn (str): The MSISDN of the gateway client to retrieve.

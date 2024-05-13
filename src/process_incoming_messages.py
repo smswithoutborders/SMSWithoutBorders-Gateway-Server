@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime
 
-from src import aes, reliability_tests
+from src import aes, reliability_tests, gateway_clients
 
 logger = logging.getLogger(__name__)
 
@@ -219,9 +219,16 @@ def process_test(data):
             test_id, fields, criteria
         )
 
-        if updated_tests < 1:
+        if updated_tests == 0:
             logger.error("No running test record found for MSISDN %s.", test_msisdn)
             return False
+
+        reliability_score = reliability_tests.calculate_reliability_score_for_client(
+            test_msisdn
+        )
+        gateway_clients.update_by_msisdn(
+            test_msisdn, {"reliability": reliability_score}
+        )
 
         return True
 

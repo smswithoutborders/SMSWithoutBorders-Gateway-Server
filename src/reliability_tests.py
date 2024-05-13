@@ -252,3 +252,51 @@ def update_test_for_client(test_id: int, fields: dict, criteria: dict = None) ->
     except DoesNotExist:
         logger.error("Test with ID '%d' does not exist.", test_id)
         return 0
+
+
+def calculate_reliability_score_for_client(msisdn: str) -> float:
+    """
+    Calculate the reliability score for a gateway client based on successful SMS routing.
+
+    Args:
+        msisdn (str): The MSISDN of the client.
+
+    Returns:
+        float: Reliability percentage rounded to two decimal places.
+
+    Notes:
+        This function calculates the reliability score for a given client based on the
+        percentage of successful SMS routings within a 3-minute window. Reliability is
+        defined as the ratio of successful SMS routings to the total number of tests
+        conducted for the client.
+
+        A successful SMS routing is defined as a routing with a 'success' status, where
+        the SMS is routed within 180 seconds (3 minutes) of being received by the system.
+    """
+    total_tests = (
+        ReliabilityTests.select().where(ReliabilityTests.msisdn == msisdn).count()
+    )
+
+    if total_tests == 0:
+        return round(0.0, 2)
+
+    successful_tests = (
+        ReliabilityTests.select()
+        .where(
+            ReliabilityTests.msisdn == msisdn,
+            ReliabilityTests.status == "success",
+            (~ReliabilityTests.sms_routed_time.is_null()),
+            (
+                (
+                    ReliabilityTests.sms_routed_time.to_timestamp()
+                    - ReliabilityTests.sms_received_time.to_timestamp()
+                )
+                <= 180
+            ),
+        )
+        .count()
+    )
+
+    reliability = (successful_tests / total_tests) * 100
+
+    return round(reliability, 2)

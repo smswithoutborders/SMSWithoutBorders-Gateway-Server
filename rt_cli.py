@@ -25,6 +25,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger("[RT CLI]")
 
+# pylint: disable=W0718,E1101,W0212
+
+
+def update_gateway_client_reliability_score(_, msisdn: str):
+    """
+    Update reliability score for a gateway client.
+
+    Args:
+        msisdn: MSISDN of the gateway client.
+
+    Returns:
+        True if the reliability score was updated successfully, False otherwise.
+    """
+    reliability_score = reliability_tests.calculate_reliability_score_for_client(msisdn)
+
+    if reliability_score == 0.0:
+        logger.error(
+            "Failed to calculate reliability score for gateway client with MSISDN: %s",
+            msisdn,
+        )
+        return None
+
+    if not gateway_clients.update_by_msisdn(msisdn, {"reliability": reliability_score}):
+        logger.error(
+            "Failed to update gateway client reliability score with MSISDN: %s", msisdn
+        )
+        return None
+
+    return True
+
 
 def make_deku_api_call(test_data, mock=False):
     """Make an API call to Deku Cloud to send test data.
@@ -67,7 +97,6 @@ def make_deku_api_call(test_data, mock=False):
         return None
 
 
-# pylint: disable=W0718
 def encrypt_payload(payload):
     """Encrypts test payload using AES encryption.
 
@@ -147,6 +176,7 @@ def start_tests(msisdn=None, all_tests=False, mock_api=False):
         pre_commit_funcs = [
             (create_test_payload, ()),
             (make_deku_api_call, (mock_api,)),
+            (update_gateway_client_reliability_score, (client["msisdn"],)),
         ]
 
         reliability_tests.create_test_for_client(
@@ -154,7 +184,6 @@ def start_tests(msisdn=None, all_tests=False, mock_api=False):
         )
 
 
-# pylint: disable=E1101,W0212,W0718
 def view_test_data(msisdn=None):
     """View test data for specified MSISDN or all test data in the database.
 

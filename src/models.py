@@ -5,8 +5,13 @@ from peewee import CharField, DateTimeField, ForeignKeyField, DecimalField
 
 from src.db import connect
 from src.utils import create_tables
+from migrations.run import check_and_migrate_schema
 
 database = connect()
+
+SCHEMA_VERSION = "v0.1.1"
+
+check_and_migrate_schema(SCHEMA_VERSION)
 
 
 class GatewayClients(database.Model):

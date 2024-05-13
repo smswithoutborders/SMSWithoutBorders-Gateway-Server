@@ -5,12 +5,13 @@ import datetime
 
 from peewee import fn, DoesNotExist
 
-from src.db import connect
 from src.models import GatewayClients
 
-database = connect()
-
 logger = logging.getLogger(__name__)
+
+# pylint: disable=E1101,W0212
+
+database = GatewayClients._meta.database
 
 
 def get_all(filters=None, page=None, per_page=None) -> list:
@@ -94,3 +95,28 @@ def get_by_msisdn(msisdn: str) -> dict:
 
     except DoesNotExist:
         return None
+
+
+def update_by_msisdn(msisdn: str, fields: dict) -> bool:
+    """Update a gateway client by its MSISDN.
+
+    Args:
+        msisdn (str): The MSISDN of the gateway client to update.
+        fields (dict): A dictionary containing the fields to update
+            along with their new values.
+
+    Returns:
+        bool: True if the client is updated successfully, False otherwise.
+    """
+    try:
+        client = GatewayClients.get(GatewayClients.msisdn == msisdn)
+
+        with database.atomic():
+            for field, value in fields.items():
+                setattr(client, field, value)
+            client.save()
+
+        return True
+
+    except DoesNotExist:
+        return False

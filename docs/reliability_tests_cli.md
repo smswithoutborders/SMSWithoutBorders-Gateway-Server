@@ -128,7 +128,8 @@ crontab -e
 0 2 * * * /usr/bin/python /path/to/rt_cli.py start --all >> /path/to/logfile.log 2>&1
 ```
 
-> [!INFO] 
+> [!NOTE]
+>
 > Replace `/usr/bin/python` with the path to your Python interpreter,
 > `/path/to/rt_cli.py` with the actual path to your script, and
 > `/path/to/logfile.log` with the path where you want to store the log output.

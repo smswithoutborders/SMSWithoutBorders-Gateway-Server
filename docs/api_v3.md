@@ -68,7 +68,7 @@ Get gateway clients with optional filters.
 ### Get Tests for a Gateway Client
 
 ```http
-GET /v3/clients?country=cameroon&per_page=20&page=2
+GET /v3/clients/<msisdn>/tests?per_page=20&page=2
 ```
 
 #### Description

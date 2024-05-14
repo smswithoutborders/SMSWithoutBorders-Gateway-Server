@@ -41,11 +41,11 @@ def update_gateway_client_reliability_score(_, msisdn: str):
     reliability_score = reliability_tests.calculate_reliability_score_for_client(msisdn)
 
     if reliability_score == 0.0:
-        logger.error(
-            "Failed to calculate reliability score for gateway client with MSISDN: %s",
+        logger.warning(
+            "Reliability score for gateway client with MSISDN %s is %s",
             msisdn,
+            reliability_score,
         )
-        return None
 
     if not gateway_clients.update_by_msisdn(msisdn, {"reliability": reliability_score}):
         logger.error(

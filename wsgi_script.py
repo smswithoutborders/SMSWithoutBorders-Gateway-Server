@@ -1,8 +1,10 @@
 """WSGI script for running the application."""
 
 import logging
+import datetime
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("[REST API]")
 
 from src.main import app as application
 
@@ -33,7 +35,7 @@ class LoggingMiddleware:
         request_method = environ["REQUEST_METHOD"]
         path_info = environ["PATH_INFO"]
 
-        logging.debug("Incoming request: %s %s", request_method, path_info)
+        logger.debug("Incoming request: %s %s", request_method, path_info)
 
         def _start_response(status, headers, *args):
             """
@@ -47,7 +49,14 @@ class LoggingMiddleware:
             Returns:
             - result: The result of start_response function.
             """
-            logging.info("Response: %s %s %s", request_method, path_info, status)
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            remote_addr = environ.get("REMOTE_ADDR", "-")
+            server_protocol = environ.get("SERVER_PROTOCOL", "-")
+            log_msg = (
+                f'- - {remote_addr} - - [{timestamp}] "{request_method} {path_info} '
+                f'{server_protocol}" {status} -\n'
+            )
+            logger.info(log_msg)
             return start_response(status, headers, *args)
 
         return self.__application(environ, _start_response)

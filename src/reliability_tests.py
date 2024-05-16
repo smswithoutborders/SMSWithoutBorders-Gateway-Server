@@ -20,7 +20,7 @@ class PreCommitError(Exception):
     """Custom exception for pre-commit function failures."""
 
 
-def get_all(filters: dict = None, page: int = None, per_page: int = None) -> list:
+def get_all(filters: dict = None, page: int = None, per_page: int = None) -> tuple:
     """Get all reliability tests according to the filters, pagination.
 
     Args:
@@ -29,7 +29,8 @@ def get_all(filters: dict = None, page: int = None, per_page: int = None) -> lis
         per_page (int, optional): Number of records per page for pagination.
 
     Returns:
-        list: A list of dictionaries containing reliability test data.
+        tuple: A tuple containing a list of dictionaries containing reliability
+            test data and total_records.
     """
 
     results = []
@@ -47,6 +48,8 @@ def get_all(filters: dict = None, page: int = None, per_page: int = None) -> lis
             if conditions:
                 query = query.where(*conditions).dicts()
 
+        total_records = query.count()
+
         if page is not None and per_page is not None:
             query = query.paginate(page, per_page)
 
@@ -57,7 +60,7 @@ def get_all(filters: dict = None, page: int = None, per_page: int = None) -> lis
 
             results.append(test)
 
-    return results
+    return results, total_records
 
 
 def get_tests_for_client(
@@ -65,7 +68,7 @@ def get_tests_for_client(
     filters: dict = None,
     page: int = None,
     per_page: int = None,
-) -> list:
+) -> tuple:
     """Get reliability tests associated with a specific gateway client.
 
     Args:
@@ -75,9 +78,9 @@ def get_tests_for_client(
         per_page (int, optional): Number of records per page for pagination.
 
     Returns:
-        list or None: A list of dictionaries containing reliability test data
-            for the client. None if no gateway client is found with the provided
-            MSISDN.
+        tuple or None: A tuple containing a list of dictionaries containing
+            reliability test data for the client and total_records. None if no 
+            gateway client is found with the provided MSISDN.
     """
 
     if not gateway_clients.get_by_msisdn(msisdn):
@@ -86,9 +89,9 @@ def get_tests_for_client(
     filters = filters or {}
     filters["msisdn"] = msisdn
 
-    tests = get_all(filters, page, per_page)
+    tests, total_records = get_all(filters, page, per_page)
 
-    return tests
+    return tests, total_records
 
 
 def update_timed_out_tests_status(check_interval: int = 15) -> None:
@@ -171,7 +174,7 @@ def create_test_for_client(
         # Call create_test_for_client with pre-commit functions
         create_test_for_client("1234567890", "running", pre_commit_funcs)
     """
-    existing_test = get_tests_for_client(msisdn, filters={"status": status})
+    existing_test, _ = get_tests_for_client(msisdn, filters={"status": status})
 
     if existing_test:
         logger.error(

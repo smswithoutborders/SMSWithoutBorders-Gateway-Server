@@ -1,5 +1,13 @@
 # API v3 Documentation
 
+## Table of Contents
+
+- [Base URL](#base-url)
+- [Security Headers](#security-headers)
+- [Endpoints](#endpoints)
+  - [Get Gateway Clients](#get-gateway-clients)
+  - [Get Tests for a Gateway Client](#get-tests-for-a-gateway-client)
+
 ## Base URL
 
 All endpoints in this API have the base URL: `/v3`
@@ -50,7 +58,8 @@ Get gateway clients with optional filters.
 		"msisdn": "+xxxxxxxxx",
 		"operator": "OPERATOR",
 		"operator_code": "xxxxxx",
-		"protocols": ["https", "smtp", "ftp"]
+		"protocols": ["https", "smtp", "ftp"],
+		"reliability": "0.00"
 	}
 ]
 ```
@@ -59,11 +68,22 @@ Get gateway clients with optional filters.
 >
 > - `last_published_date` field is in
 >   [unix time](https://en.wikipedia.org/wiki/Unix_time).
+> - `reliability` field represents the reliability of the gateway client as a
+>   percentage.
 
 #### Errors
 
 - `400 Bad Request`: If the request is malformed.
 - `500 Internal Server Error`: If an unexpected error occurs.
+
+#### Additional Headers
+
+- `X-Total-Count`: Total number of records.
+- `X-Page`: Current page number.
+- `X-Per-Page`: Number of records per page.
+- `Link`: Provides links for pagination. Refer to GitHub's
+  [comprehensive documentation](https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers)
+  on how to use link headers.
 
 ### Get Tests for a Gateway Client
 
@@ -107,3 +127,12 @@ Get reliability tests for a specific gateway client with optional filters.
 - `400 Bad Request`: If the request is malformed.
 - `404 Not Found`: If the requested resource is not found.
 - `500 Internal Server Error`: If an unexpected error occurs.
+
+#### Additional Headers
+
+- `X-Total-Count`: Total number of records.
+- `X-Page`: Current page number.
+- `X-Per-Page`: Number of records per page.
+- `Link`: Provides links for pagination. Refer to GitHub's
+  [comprehensive documentation](https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers)
+  on how to use link headers.

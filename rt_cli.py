@@ -164,7 +164,7 @@ def start_tests(msisdn=None, all_tests=False, mock_api=False):
         return
 
     if all_tests:
-        clients = gateway_clients.get_all()
+        clients, _ = gateway_clients.get_all()
     else:
         clients = [gateway_clients.get_by_msisdn(msisdn=msisdn)]
 
@@ -192,10 +192,10 @@ def view_test_data(msisdn=None):
     """
     with ReliabilityTests._meta.database.atomic():
         try:
-            tests = reliability_tests.get_all()
+            tests, _ = reliability_tests.get_all()
 
             if msisdn:
-                tests = reliability_tests.get_tests_for_client(msisdn)
+                tests, _ = reliability_tests.get_tests_for_client(msisdn)
 
             if not tests:
                 logger.info("No tests found.")

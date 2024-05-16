@@ -9,6 +9,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from src import gateway_clients, reliability_tests
 from src.db import connect
+from src.utils import build_link_header
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
 CORS(v3_blueprint)
@@ -75,8 +76,16 @@ def get_gateway_clients():
         "last_published_date": request.args.get("last_published_date") or None,
     }
 
-    page = request.args.get("page") or 1
-    per_page = request.args.get("per_page") or 10
+    try:
+        page = int(request.args.get("page") or 1)
+        per_page = int(request.args.get("per_page") or 10)
+
+        if page < 1 or per_page < 1:
+            raise ValueError
+    except ValueError as exc:
+        raise BadRequest(
+            "Invalid page or per_page parameter. Must be positive integers."
+        ) from exc
 
     last_published_date_str = filters.get("last_published_date")
     if last_published_date_str:
@@ -90,27 +99,53 @@ def get_gateway_clients():
                 "Please provide a valid ISO format datetime (YYYY-MM-DD)."
             ) from exc
 
-    results = gateway_clients.get_all(filters, int(page), int(per_page))
+    results, total_records = gateway_clients.get_all(filters, page, per_page)
 
-    return jsonify(results)
+    response = jsonify(results)
+    response.headers["X-Total-Count"] = str(total_records)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Per-Page"] = str(per_page)
+
+    link_header = build_link_header(request.base_url, page, per_page, total_records)
+    if link_header:
+        response.headers["Link"] = link_header
+
+    return response
 
 
 @v3_blueprint.route("/clients/<string:msisdn>/tests", methods=["GET"])
 def get_gateway_client_tests(msisdn):
     """Get reliability tests for a specific gateway client with optional filters."""
 
-    page = request.args.get("page") or 1
-    per_page = request.args.get("per_page") or 10
+    try:
+        page = int(request.args.get("page") or 1)
+        per_page = int(request.args.get("per_page") or 10)
+
+        if page < 1 or per_page < 1:
+            raise ValueError
+    except ValueError as exc:
+        raise BadRequest(
+            "Invalid page or per_page parameter. Must be positive integers."
+        ) from exc
 
     reliability_tests.update_timed_out_tests_status()
-    client_tests = reliability_tests.get_tests_for_client(
+    client_tests, total_records = reliability_tests.get_tests_for_client(
         msisdn, page=int(page), per_page=int(per_page)
     )
 
     if not client_tests:
         raise NotFound(f"No gateway client found with MSISDN: {msisdn}")
 
-    return jsonify(client_tests)
+    response = jsonify(client_tests)
+    response.headers["X-Total-Count"] = str(total_records)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Per-Page"] = str(per_page)
+
+    link_header = build_link_header(request.base_url, page, per_page, total_records)
+    if link_header:
+        response.headers["Link"] = link_header
+
+    return response
 
 
 @v3_blueprint.errorhandler(BadRequest)

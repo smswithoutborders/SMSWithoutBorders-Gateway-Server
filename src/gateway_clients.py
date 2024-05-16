@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 database = GatewayClients._meta.database
 
 
-def get_all(filters=None, page=None, per_page=None) -> list:
+def get_all(filters=None, page=None, per_page=None) -> tuple:
     """Get all gateway clients according to the filters, pagination.
 
     Args:
@@ -23,7 +23,7 @@ def get_all(filters=None, page=None, per_page=None) -> list:
         per_page (int, optional): Number of records per page for pagination.
 
     Returns:
-        list: A list of dictionaries containing client data.
+        tuple: A tuple containing a list of dictionaries containing client data and total_records.
     """
 
     results = []
@@ -56,6 +56,8 @@ def get_all(filters=None, page=None, per_page=None) -> list:
             if conditions:
                 query = query.where(*conditions).dicts()
 
+        total_records = query.count()
+
         if page is not None and per_page is not None:
             query = query.paginate(page, per_page)
 
@@ -67,7 +69,7 @@ def get_all(filters=None, page=None, per_page=None) -> list:
             client["protocols"] = client["protocols"].split(",")
             results.append(client)
 
-    return results
+    return results, total_records
 
 
 def get_by_msisdn(msisdn: str) -> dict:

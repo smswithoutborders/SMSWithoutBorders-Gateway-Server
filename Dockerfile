@@ -37,7 +37,7 @@ RUN mod_wsgi-express setup-server wsgi_script.py \
 	--https-port ${SSL_PORT}
 
 RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf && \
-	echo "Include '/gateway_server/apache.conf'" | \
+	echo "Include '/gateway-server/apache.conf'" | \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 

@@ -122,3 +122,41 @@ def update_by_msisdn(msisdn: str, fields: dict) -> bool:
 
     except DoesNotExist:
         return False
+
+
+def get_all_countries() -> list:
+    """Retrieve a list of all unique countries from the gateway clients.
+
+    Returns:
+        list: A list containing names of all unique countries.
+    """
+    countries = (
+        GatewayClients.select(GatewayClients.country)
+        .distinct()
+        .where(GatewayClients.country.is_null(False))
+        .tuples()
+    )
+    return [country[0] for country in countries]
+
+
+def get_operators_for_country(country: str) -> list:
+    """Retrieve a list of all unique operators for a specific country.
+
+    Args:
+        country (str): The name of the country for which operators are
+            to be retrieved.
+
+    Returns:
+        list: A list containing names of all unique operators for the
+            specified country.
+    """
+    operators = (
+        GatewayClients.select(GatewayClients.operator)
+        .distinct()
+        .where(
+            (GatewayClients.country == country)
+            & (GatewayClients.operator.is_null(False))
+        )
+        .tuples()
+    )
+    return [operator[0] for operator in operators]

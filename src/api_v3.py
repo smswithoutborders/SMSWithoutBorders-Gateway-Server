@@ -12,7 +12,7 @@ from src.db import connect
 from src.utils import build_link_header
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
-CORS(v3_blueprint)
+CORS(v3_blueprint, expose_headers=["X-Total-Count", "X-Page", "X-Per-Page", "Link"])
 
 database = connect()
 
@@ -133,7 +133,7 @@ def get_gateway_client_tests(msisdn):
         msisdn, page=int(page), per_page=int(per_page)
     )
 
-    if not client_tests:
+    if client_tests is None:
         raise NotFound(f"No gateway client found with MSISDN: {msisdn}")
 
     response = jsonify(client_tests)
@@ -146,6 +146,23 @@ def get_gateway_client_tests(msisdn):
         response.headers["Link"] = link_header
 
     return response
+
+
+@v3_blueprint.route("/clients/countries", methods=["GET"])
+def get_all_countries():
+    """Get all countries for clients."""
+    countries = gateway_clients.get_all_countries()
+    return jsonify(countries)
+
+
+@v3_blueprint.route("/clients/<string:country>/operators", methods=["GET"])
+def get_operators_for_country(country):
+    """Get all operators for a specific country."""
+    if not country:
+        raise BadRequest("Country parameter is required.")
+
+    operators = gateway_clients.get_operators_for_country(country.lower())
+    return jsonify(operators)
 
 
 @v3_blueprint.errorhandler(BadRequest)

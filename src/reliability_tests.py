@@ -78,13 +78,15 @@ def get_tests_for_client(
         per_page (int, optional): Number of records per page for pagination.
 
     Returns:
-        tuple or None: A tuple containing a list of dictionaries containing
-            reliability test data for the client and total_records. None if no 
-            gateway client is found with the provided MSISDN.
+        tuple: A tuple containing:
+            - list of dict: A list of dictionaries containing reliability test data
+                for the client.
+            - int: Total number of records.
+            Returns (None, None) if no gateway client is found with the provided MSISDN.
     """
 
     if not gateway_clients.get_by_msisdn(msisdn):
-        return None
+        return None, None
 
     filters = filters or {}
     filters["msisdn"] = msisdn

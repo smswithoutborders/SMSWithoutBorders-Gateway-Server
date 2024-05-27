@@ -1,16 +1,18 @@
 """API V3 Blueprint"""
 
 import logging
+from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 from flask_cors import CORS
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
-from src.controllers import query_gateway_clients, check_reliability_tests
+from src import gateway_clients, reliability_tests
 from src.db import connect
+from src.utils import build_link_header
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
-CORS(v3_blueprint)
+CORS(v3_blueprint, expose_headers=["X-Total-Count", "X-Page", "X-Per-Page", "Link"])
 
 database = connect()
 
@@ -70,19 +72,101 @@ def get_gateway_clients():
     filters = {
         "country": request.args.get("country") or None,
         "operator": request.args.get("operator") or None,
-        "protocol": request.args.get("protocol") or None,
+        "protocols": request.args.get("protocols") or None,
+        "last_published_date": request.args.get("last_published_date") or None,
     }
 
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("per_page", 10))
+    try:
+        page = int(request.args.get("page") or 1)
+        per_page = int(request.args.get("per_page") or 10)
 
-    check_reliability_tests()
-    results = query_gateway_clients(filters, page, per_page)
+        if page < 1 or per_page < 1:
+            raise ValueError
+    except ValueError as exc:
+        raise BadRequest(
+            "Invalid page or per_page parameter. Must be positive integers."
+        ) from exc
 
-    return jsonify(results)
+    last_published_date_str = filters.get("last_published_date")
+    if last_published_date_str:
+        try:
+            filters["last_published_date"] = datetime.fromisoformat(
+                last_published_date_str
+            )
+        except ValueError as exc:
+            raise BadRequest(
+                "Invalid last_published_date. "
+                "Please provide a valid ISO format datetime (YYYY-MM-DD)."
+            ) from exc
+
+    results, total_records = gateway_clients.get_all(filters, page, per_page)
+
+    response = jsonify(results)
+    response.headers["X-Total-Count"] = str(total_records)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Per-Page"] = str(per_page)
+
+    link_header = build_link_header(request.base_url, page, per_page, total_records)
+    if link_header:
+        response.headers["Link"] = link_header
+
+    return response
+
+
+@v3_blueprint.route("/clients/<string:msisdn>/tests", methods=["GET"])
+def get_gateway_client_tests(msisdn):
+    """Get reliability tests for a specific gateway client with optional filters."""
+
+    try:
+        page = int(request.args.get("page") or 1)
+        per_page = int(request.args.get("per_page") or 10)
+
+        if page < 1 or per_page < 1:
+            raise ValueError
+    except ValueError as exc:
+        raise BadRequest(
+            "Invalid page or per_page parameter. Must be positive integers."
+        ) from exc
+
+    reliability_tests.update_timed_out_tests_status()
+    client_tests, total_records = reliability_tests.get_tests_for_client(
+        msisdn, page=int(page), per_page=int(per_page)
+    )
+
+    if client_tests is None:
+        raise NotFound(f"No gateway client found with MSISDN: {msisdn}")
+
+    response = jsonify(client_tests)
+    response.headers["X-Total-Count"] = str(total_records)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Per-Page"] = str(per_page)
+
+    link_header = build_link_header(request.base_url, page, per_page, total_records)
+    if link_header:
+        response.headers["Link"] = link_header
+
+    return response
+
+
+@v3_blueprint.route("/clients/countries", methods=["GET"])
+def get_all_countries():
+    """Get all countries for clients."""
+    countries = gateway_clients.get_all_countries()
+    return jsonify(countries)
+
+
+@v3_blueprint.route("/clients/<string:country>/operators", methods=["GET"])
+def get_operators_for_country(country):
+    """Get all operators for a specific country."""
+    if not country:
+        raise BadRequest("Country parameter is required.")
+
+    operators = gateway_clients.get_operators_for_country(country.lower())
+    return jsonify(operators)
 
 
 @v3_blueprint.errorhandler(BadRequest)
+@v3_blueprint.errorhandler(NotFound)
 def handle_bad_request_error(error):
     """Handle BadRequest errors."""
     logger.error(error.description)
@@ -93,4 +177,7 @@ def handle_bad_request_error(error):
 def handle_generic_error(error):
     """Handle generic errors."""
     logger.exception(error)
-    return jsonify({"error": "An unexpected error occurred"}), 500
+    return (
+        jsonify({"error": "Oops! Something went wrong. Please try again later."}),
+        500,
+    )

@@ -1,0 +1,8 @@
+[
+    {
+        "action": "add_column",
+        "table": "gateway_clients",
+        "column_name": "reliability",
+        "field": "DecimalField(max_digits=5, decimal_places=2, default=0.00)"
+    }
+]

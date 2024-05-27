@@ -6,13 +6,13 @@ import json
 import os
 from datetime import datetime
 
-from src import aes
-from src.models import ReliabilityTests
-from src.controllers import check_reliability_tests
+from src import aes, reliability_tests, gateway_clients
 
 logger = logging.getLogger(__name__)
 
 SHARED_KEY_FILE = os.environ.get("SHARED_KEY")
+
+# pylint: disable=E1101,W0212,W0718
 
 
 class UserNotFoundError(Exception):
@@ -186,16 +186,8 @@ def process_test(data):
         data = parse_json_data(data)
         validate_data(data)
 
-        if not SHARED_KEY_FILE:
-            logger.error("SHARED_KEY_FILE environment variable not set.")
-            return False
-
         with open(SHARED_KEY_FILE, "r", encoding="utf-8") as f:
             encryption_key = f.readline().strip()[:32]
-
-        if not encryption_key:
-            logger.error("Encryption key is empty or invalid.")
-            return False
 
         plaintext = decrypt_text(data["text"], encryption_key)
         decrypted_test_data = parse_json_data(plaintext)
@@ -207,29 +199,36 @@ def process_test(data):
             logger.error("Test data is incomplete.")
             return False
 
-        check_reliability_tests()
+        reliability_tests.update_timed_out_tests_status()
 
-        # pylint: disable=E1101,W0212
-        with ReliabilityTests._meta.database.connection_context():
-            test = ReliabilityTests.get_or_none(
-                ReliabilityTests.sms_routed_time.is_null(),
-                id=test_id,
-                msisdn=test_msisdn,
-                status="running",
-            )
+        date_sent = int(data["date_sent"]) / 1000
+        date = int(data["date"]) / 1000
 
-            if not test:
-                logger.error("No running test record found for MSISDN %s.", test_msisdn)
-                return False
+        fields = {
+            "status": "success",
+            "sms_routed_time": datetime.now(),
+            "sms_sent_time": datetime.fromtimestamp(date_sent),
+            "sms_received_time": datetime.fromtimestamp(date),
+        }
+        criteria = {
+            "sms_routed_time": "is_null",
+            "msisdn": test_msisdn,
+            "status": "running",
+        }
+        updated_tests = reliability_tests.update_test_for_client(
+            test_id, fields, criteria
+        )
 
-            date_sent = int(data["date_sent"]) / 1000
-            date = int(data["date"]) / 1000
+        if updated_tests == 0:
+            logger.error("No running test record found for MSISDN %s.", test_msisdn)
+            return False
 
-            test.status = "success"
-            test.sms_routed_time = datetime.now()
-            test.sms_sent_time = datetime.fromtimestamp(date_sent)
-            test.sms_received_time = datetime.fromtimestamp(date)
-            test.save()
+        reliability_score = reliability_tests.calculate_reliability_score_for_client(
+            test_msisdn
+        )
+        gateway_clients.update_by_msisdn(
+            test_msisdn, {"reliability": reliability_score}
+        )
 
         return True
 
@@ -238,4 +237,4 @@ def process_test(data):
         return False
     except Exception as error:
         logger.error("An error occurred during test data processing: %s", error)
-        raise error
+        return False

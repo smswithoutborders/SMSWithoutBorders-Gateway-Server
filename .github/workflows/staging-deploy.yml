@@ -44,3 +44,14 @@ jobs:
             echo "==========================="
             echo "✅ Project build complete"
             echo "==========================="
+
+            echo "============================="
+            echo "Cleaning up staging builds ..."
+            echo "============================="
+            if ! ${{ secrets.CLEANUP_CMD }}; then
+              echo "❌ Error cleaning up builds!"
+              exit 1
+            fi
+            echo "============================="
+            echo "✅ Cleanup complete"
+            echo "============================="

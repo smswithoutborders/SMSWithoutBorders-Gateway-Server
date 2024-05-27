@@ -1,25 +1,19 @@
 FROM python:3.9
 
-# Install necessary system dependencies
-RUN apt-get update
-RUN apt-get install build-essential apache2 apache2-dev python3-dev default-libmysqlclient-dev supervisor -y
+RUN apt-get update && \ 
+	apt-get install build-essential apache2 apache2-dev python3-dev default-libmysqlclient-dev supervisor -y
 
-# Set the working directory
-WORKDIR /gateway_server
+WORKDIR /gateway-server
 
-# Copy the entire project directory into the container
 COPY . .
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Install Python dependencies
-RUN pip install --no-cache-dir wheel
-RUN pip install --no-cache-dir --force-reinstall -r requirements.txt
+RUN pip install -U pip && \
+	pip install --no-cache-dir wheel && \
+	pip install --no-cache-dir --force-reinstall -r requirements.txt && \
+	usermod -u 1000 www-data && \
+	usermod -G root www-data
 
-# Set permissions
-RUN usermod -u 1000 www-data
-RUN usermod -G root www-data
-
-# Set up Apache with mod_wsgi
 ARG PORT=$PORT
 ARG HOST
 ARG SSL_CERTIFICATE
@@ -33,7 +27,6 @@ RUN mod_wsgi-express setup-server wsgi_script.py \
 	--error-log-name /tmp/httpd/error.log \
 	--access-log-name /tmp/httpd/error.log \
 	--startup-log-name /tmp/httpd/error.log \
-	--log-level='debug' \
 	--user www-data \
 	--group www-data \
 	--port $PORT \
@@ -43,9 +36,8 @@ RUN mod_wsgi-express setup-server wsgi_script.py \
 	--ssl-certificate-chain-file ${SSL_PEM} \
 	--https-port ${SSL_PORT}
 
-# Update Apache configuration
-RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf
-RUN echo "Include '/gateway_server/apache.conf'" | \
+RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf && \
+	echo "Include '/gateway-server/apache.conf'" | \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 

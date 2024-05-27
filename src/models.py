@@ -1,12 +1,17 @@
 """Database Models."""
 
 from datetime import datetime
-from peewee import CharField, DateTimeField, ForeignKeyField
+from peewee import CharField, DateTimeField, ForeignKeyField, DecimalField
 
 from src.db import connect
 from src.utils import create_tables
+from migrations.run import check_and_migrate_schema
 
 database = connect()
+
+SCHEMA_VERSION = "v0.1.1"
+
+check_and_migrate_schema(SCHEMA_VERSION)
 
 
 class GatewayClients(database.Model):
@@ -17,6 +22,7 @@ class GatewayClients(database.Model):
     operator = CharField()
     operator_code = CharField()
     protocols = CharField()
+    reliability = DecimalField(max_digits=5, decimal_places=2, default=0.00)
     last_published_date = DateTimeField(default=datetime.now)
 
     # pylint: disable=R0903

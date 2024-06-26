@@ -23,9 +23,9 @@ def get_channel():
         grpc.Channel: The gRPC channel.
     """
     mode = get_configs("MODE", default_value="development")
-    hostname = get_configs("PUBLISHER_HOST")
-    port = get_configs("PUBLISHER_PORT")
-    secure_port = get_configs("PUBLISHER_TLS_PORT")
+    hostname = get_configs("PUBLISHER_GRPC_HOST")
+    port = get_configs("PUBLISHER_GRPC_PORT")
+    secure_port = get_configs("PUBLISHER_GRPC_SSL_PORT")
 
     if mode == "production":
         logger.info(

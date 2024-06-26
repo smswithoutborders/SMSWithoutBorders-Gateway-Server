@@ -10,6 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from src import gateway_clients, reliability_tests
 from src.db import connect
 from src.utils import build_link_header
+from src.grpc_publisher_client import publish_content
 
 v3_blueprint = Blueprint("v3", __name__, url_prefix="/v3")
 CORS(v3_blueprint, expose_headers=["X-Total-Count", "X-Page", "X-Per-Page", "Link"])
@@ -163,6 +164,37 @@ def get_operators_for_country(country):
 
     operators = gateway_clients.get_operators_for_country(country.lower())
     return jsonify(operators)
+
+
+@v3_blueprint.route("/publish", methods=["POST"])
+def publish_relaysms_payload():
+    """Publishes RelaySMS Payload."""
+
+    if not request.json.get("text"):
+        raise BadRequest("Missing required field: text")
+
+    if not request.json.get("address"):
+        raise BadRequest("Missing required field: address")
+
+    request_data = request.json
+    publish_response, publish_error = publish_content(content=request_data["text"])
+
+    if publish_error:
+        logger.error(
+            "Failed to Publish: %s - %s", publish_error.code(), publish_error.details()
+        )
+        raise BadRequest(
+            f"Failed to publish payload. Publish error: {publish_error.details()}"
+        )
+
+    if not publish_response.success:
+        logger.error("Failed to Publish: %s", publish_response.message)
+        raise BadRequest(
+            f"Failed to publish payload. Publish error: {publish_error.details()}"
+        )
+
+    logger.info("Successfully published payload.")
+    return jsonify({"publisher_response": publish_response.publisher_response})
 
 
 @v3_blueprint.errorhandler(BadRequest)

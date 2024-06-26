@@ -1,0 +1,69 @@
+"""Publisher gRPC Client"""
+
+import functools
+import logging
+
+import grpc
+
+import publisher_pb2
+import publisher_pb2_grpc
+
+from src.utils import get_configs
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("[Publisher gRPC Client]")
+
+
+def get_channel():
+    """Get the appropriate gRPC channel based on the mode.
+
+    Returns:
+        grpc.Channel: The gRPC channel.
+    """
+    mode = get_configs("MODE", default_value="development")
+    hostname = get_configs("PUBLISHER_HOST")
+    port = get_configs("PUBLISHER_PORT")
+    secure_port = get_configs("PUBLISHER_TLS_PORT")
+
+    if mode == "production":
+        logger.info(
+            "Connecting to publisher gRPC server at %s:%s", hostname, secure_port
+        )
+        credentials = grpc.ssl_channel_credentials()
+        logger.info("Using secure channel for gRPC communication")
+        return grpc.secure_channel(f"{hostname}:{secure_port}", credentials)
+
+    logger.info("Connecting to publisher gRPC server at %s:%s", hostname, port)
+    logger.warning("Using insecure channel for gRPC communication")
+    return grpc.insecure_channel(f"{hostname}:{port}")
+
+
+def grpc_call(func):
+    """Decorator to handle gRPC calls."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            channel = get_channel()
+
+            with channel as conn:
+                kwargs["stub"] = publisher_pb2_grpc.PublisherStub(conn)
+                return func(*args, **kwargs)
+        except grpc.RpcError as e:
+            return None, e
+        except Exception as e:
+            raise e
+
+    return wrapper
+
+
+@grpc_call
+def publish_content(content, **kwargs):
+    """Request for publishing message to a target platform"""
+    stub = kwargs["stub"]
+    request = publisher_pb2.PublishContentRequest(content=content)
+
+    response = stub.PublishContent(request)
+    return response, None

@@ -185,3 +185,35 @@ Get all operators for a specific country.
 
 - `400 Bad Request`: If the country parameter is missing.
 - `500 Internal Server Error`: If an unexpected error occurs.
+
+### Publish Payload
+
+```http
+POST /v3/publish
+```
+
+#### Description
+
+Publish RelaySMS Payload.
+
+#### Request Body
+
+```json
+{
+	"text": "payload content",
+	"address": "+237123456789"
+}
+```
+
+#### Response
+
+```json
+{
+	"publisher_response": "encrypted publisher response"
+}
+```
+
+#### Errors
+
+- `400 Bad Request`: If the request is malformed.
+- `500 Internal Server Error`: If an unexpected error occurs.

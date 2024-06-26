@@ -1,7 +1,13 @@
 FROM python:3.9
 
 RUN apt-get update && \ 
-	apt-get install build-essential apache2 apache2-dev python3-dev default-libmysqlclient-dev supervisor -y
+	apt-get install -y \
+	build-essential \
+	apache2 \
+	apache2-dev \
+	python3-dev \
+	default-libmysqlclient-dev \
+	supervisor 
 
 WORKDIR /gateway-server
 
@@ -41,4 +47,5 @@ RUN sed -i "s/15002/$( echo $PORT )/g" apache.conf && \
 	cat - /tmp/httpd/httpd.conf > /tmp/file.txt | \
 	mv /tmp/file.txt /tmp/httpd/httpd.conf
 
+ENV MODE=production
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

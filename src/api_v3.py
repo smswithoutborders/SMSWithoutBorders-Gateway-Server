@@ -173,11 +173,14 @@ def publish_relaysms_payload():
     if not request.json.get("text"):
         raise BadRequest("Missing required field: text")
 
-    if not request.json.get("address"):
-        raise BadRequest("Missing required field: address")
+    if not request.json.get("MSISDN") and not request.json.get("address"):
+        raise BadRequest("Missing required field: address or MSISDN")
 
     request_data = request.json
-    publish_response, publish_error = publish_content(content=request_data["text"])
+    sender = request.json.get("MSISDN") or request.json.get("address")
+    publish_response, publish_error = publish_content(
+        content=request_data["text"], sender=sender
+    )
 
     if publish_error:
         logger.error(

@@ -60,13 +60,13 @@ def get_operator_information(msisdn):
         number = phonenumbers.parse(msisdn, None)
         country = geocoder.description_for_number(number, "en")
         country_code = number.country_code
-        operator = carrier.name_for_number(number, "en")
-        operator_code = get_plmn(country_code, operator)
+        operator = carrier.name_for_number(number, "en") or "N/A"
+        operator_code = get_plmn(country_code, operator) if operator != "N/A" else "N/A"
         return country, operator, operator_code
     # pylint: disable=W0718
     except Exception:
-        logger.error("Failed to parse MSISDN.", exc_info=True)
-        return None, None
+        logger.exception("Failed to parse MSISDN.")
+        return None, None, None
 
 
 def create_client(msisdn, protocols):
@@ -83,15 +83,15 @@ def create_client(msisdn, protocols):
     try:
         country, operator, operator_code = get_operator_information(msisdn)
 
-        if country is None or operator is None or operator_code is None:
+        if not all(country, operator, operator_code):
             logger.error(
                 "Failed to retrieve complete operator information for the provided MSISDN."
             )
-            if country is None:
+            if not country:
                 logger.error("Country information is missing.")
-            if operator is None:
+            if not operator:
                 logger.error("Operator information is missing.")
-            if operator_code is None:
+            if not operator_code:
                 logger.error("Operator code information is missing.")
             return
 
@@ -186,6 +186,26 @@ def update_client(msisdn, country=None, operator=None, protocols=None):
             logger.error("Failed to update record.", exc_info=True)
 
 
+def delete_client(msisdn):
+    """
+    Delete an existing gateway client.
+
+    Args:
+        msisdn (str): The MSISDN of the client to delete.
+    """
+    with GatewayClients._meta.database.atomic():
+        try:
+            client = GatewayClients.get_or_none(msisdn=msisdn)
+            if client:
+                client.delete_instance()
+                logger.info("Client deleted successfully.")
+            else:
+                logger.info("No client found with MSISDN: %s", msisdn)
+        # pylint: disable=W0718
+        except Exception:
+            logger.exception("Failed to delete record.")
+
+
 def main():
     """
     Parse command line arguments and execute corresponding actions.
@@ -228,6 +248,8 @@ def main():
             args.operator,
             args.protocols,
         )
+    elif args.action == "delete":
+        delete_client(args.msisdn)
 
 
 if __name__ == "__main__":

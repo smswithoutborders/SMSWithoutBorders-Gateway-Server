@@ -3,8 +3,8 @@
 import logging
 import datetime
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("[REST API]")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from src.main import app as application
 
@@ -54,7 +54,7 @@ class LoggingMiddleware:
             server_protocol = environ.get("SERVER_PROTOCOL", "-")
             log_msg = (
                 f'- - {remote_addr} - - [{timestamp}] "{request_method} {path_info} '
-                f'{server_protocol}" {status} -\n'
+                f'{server_protocol}" {status} -'
             )
             logger.info(log_msg)
             return start_response(status, headers, *args)

@@ -83,7 +83,7 @@ def create_client(msisdn, protocols):
     try:
         country, operator, operator_code = get_operator_information(msisdn)
 
-        if not all(country, operator, operator_code):
+        if not all((country, operator, operator_code)):
             logger.error(
                 "Failed to retrieve complete operator information for the provided MSISDN."
             )

@@ -3,7 +3,17 @@
 # Use this for IDEs to check data types
 # https://docs.python.org/3/library/typing.html
 
-from flask import Flask, request, jsonify, Response
+import threading
+import requests
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    Response,
+    copy_current_request_context,
+    redirect,
+    url_for,
+)
 from flask_cors import CORS, cross_origin
 
 from src import sync, rsa, aes, publisher, rmq_broker, notifications
@@ -453,6 +463,19 @@ def incoming_sms_routing(platform):
     platform = bleach.clean(platform)
 
     data = request.data
+
+    def forward_request(target_url, payload):
+        try:
+            response = requests.post(target_url, json=payload, timeout=30)
+            app.logger.info("Forwarded request response: %s", response.text)
+        except requests.RequestException as e:
+            app.logger.error("Request forwarding error: %s", str(e))
+
+    target_url = url_for("v3.publish_relaysms_payload", _external=True)
+    app.logger.info("Background request forwarding to: %s", target_url)
+
+    thread = threading.Thread(target=forward_request, args=(target_url, request.json))
+    thread.start()
 
     try:
         if process_test(data):

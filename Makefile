@@ -18,7 +18,7 @@ $(PROTO_DIR)/%.proto:
 
 publisher-proto: 
 	@rm -f "$(PROTO_DIR)/publisher.proto"
-	@$(MAKE) PROTO_URL=https://raw.githubusercontent.com/smswithoutborders/SMSWithoutBorders-Publisher/feature/grpc-api/protos/v1/publisher.proto \
+	@$(MAKE) PROTO_URL=https://raw.githubusercontent.com/smswithoutborders/SMSWithoutBorders-Publisher/main/protos/v1/publisher.proto \
 	$(PROTO_DIR)/publisher.proto
 
 grpc-compile: publisher-proto
